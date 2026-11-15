@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kutty Crayons</title>
+<meta name="theme-color" content="#fff6ea">
+<meta name="description" content="Trace the dots and colour the picture — a kids drawing game.">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kutty Crayons">
+<style>html{box-sizing:border-box;height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:inherit}body{margin:0;font-size:14px}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: one-screen game — sticker buttons flank a riddle card; a paper sheet fills the middle; the dock below changes per step (trace hint → colour squares + ✓). Single bright "crayon box" look on purpose. */
+:root{
+  --paper:#fff6ea; --sheet:#ffffff; --ink:#2b2540; --muted:#8a83a3;
+  --sky:#8fd3ff; --lilac:#cbb8ff; --sun:#ffd166; --pink:#ff8fb8; --mint:#7fe0c3; --grape:#c7a4ff; --slime:#9be37a;
+  --tip:#2b2540;
+  --font:"Baloo Thambi 2","Nirmala UI","Latha",system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--font);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#app{height:100%;display:flex;flex-direction:column;gap:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px;box-sizing:border-box;max-width:640px;margin:0 auto}
+header{display:grid;grid-template-columns:56px 1fr 56px;gap:10px;align-items:start}
+.col{display:flex;flex-direction:column;gap:10px;align-items:center}
+.stk{text-decoration:none;width:52px;height:52px;border-radius:17px;border:3px solid #fff;background:var(--c,var(--sky));box-shadow:0 3px 0 rgba(43,37,64,.16),0 8px 16px rgba(43,37,64,.10);display:grid;place-items:center;cursor:pointer;padding:0;color:var(--ink);transition:transform .12s}
+.stk:active{transform:translateY(2px) scale(.96)}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.stk svg{width:28px;height:28px}
+.mid{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.lvl{font-weight:800;font-size:24px;letter-spacing:.06em;line-height:1}
+.card{display:flex;align-items:center;gap:10px;background:var(--sheet);border:3px solid #eaf3ff;border-radius:20px;padding:8px 12px;box-shadow:0 6px 14px rgba(43,37,64,.08);width:100%;box-sizing:border-box;min-height:66px}
+.card>svg{flex:none;width:44px;height:44px}
+.card .txt{min-width:0;text-align:center;flex:1}
+#clue{margin:0;font-weight:700;font-size:16px;line-height:1.2;text-wrap:balance}
+#word{display:block;font-weight:600;font-size:14px;color:var(--muted);line-height:1.2}
+.bar{width:80%;height:8px;border-radius:8px;background:#efe6ff;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--pink),var(--sun));border-radius:8px;transition:width .2s}
+#stage{flex:1;min-height:0;position:relative;touch-action:none}
+#board{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:28px;overflow:hidden;background:var(--sheet);box-shadow:0 10px 30px rgba(43,37,64,.10),0 0 0 3px #fff}
+#board canvas{position:absolute;inset:0}
+#dock{display:flex;flex-direction:column;gap:8px;min-height:76px;justify-content:center}
+.hint{align-self:center;background:var(--ink);color:#fff;font-weight:700;font-size:15px;border-radius:999px;padding:8px 16px;text-align:center}
+.opts{display:flex;gap:12px;align-items:center;justify-content:center;min-height:72px}
+.opt{width:58px;height:58px;border-radius:18px;border:4px solid #fff;background:var(--c);box-shadow:0 3px 0 rgba(43,37,64,.16),0 8px 14px rgba(43,37,64,.10);cursor:pointer;padding:0;transition:transform .15s}
+.opt[aria-pressed="true"]{transform:translateY(-6px) scale(1.06);box-shadow:0 0 0 3px var(--ink),0 10px 16px rgba(43,37,64,.18)}
+.opt.more{background:conic-gradient(#ff5a5f,#ffd23f,#2ec27e,#4cc9f0,#8e6cff,#ff7ac6,#ff5a5f);display:grid;place-items:center;color:#fff;font:800 26px/1 var(--font);text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.opts.wiggle .opt{animation:wig .4s}
+@keyframes wig{25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.check{width:64px;height:64px;border-radius:50%;border:4px solid #fff;background:#3ccf6a;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 0 #2a9e4f,0 10px 18px rgba(43,37,64,.18);padding:0;animation:pop .35s cubic-bezier(.3,1.6,.5,1)}
+.check svg{width:34px;height:34px}
+@keyframes pop{from{transform:scale(.3)}}
+.palette{display:flex;gap:6px;overflow-x:auto;padding:4px 2px;scrollbar-width:none;justify-content:flex-start}
+.palette::-webkit-scrollbar{display:none}
+.sw{flex:none;width:36px;height:36px;border-radius:12px;border:3px solid #fff;background:var(--c);cursor:pointer;padding:0;box-shadow:0 2px 0 rgba(43,37,64,.14)}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+.tools{display:flex;gap:8px;align-items:center}
+.tool{flex:1;min-width:0;height:54px;border-radius:16px;border:3px solid #fff;background:#f3ecff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 12px/1 var(--font);color:var(--ink);cursor:pointer;box-shadow:0 3px 0 rgba(43,37,64,.12);gap:2px;padding:0}
+.tool svg{width:24px;height:24px}
+.tool[aria-pressed="true"]{background:var(--sun)}
+#marker{position:fixed;left:0;top:0;width:52px;height:280px;pointer-events:none;z-index:20;transform-origin:26px 0;will-change:transform}
+#marker svg{width:100%;height:100%;display:block;filter:drop-shadow(6px 10px 10px rgba(43,37,64,.18))}
+#marker.idle svg{animation:bob 1.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px)}}
+.m-tip{fill:var(--tip)}
+.toast{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%) scale(.6);opacity:0;background:var(--sheet);border:4px solid var(--sun);border-radius:24px;padding:12px 22px;font-weight:800;font-size:26px;z-index:30;pointer-events:none;transition:all .35s cubic-bezier(.3,1.6,.5,1);text-align:center;box-shadow:0 12px 30px rgba(43,37,64,.18);max-width:80vw}
+.toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.toast small{display:block;font-size:15px;font-weight:600;color:var(--muted)}
+.conf{position:fixed;top:-20px;width:10px;height:14px;border-radius:3px;z-index:60;pointer-events:none;animation:fall var(--d) cubic-bezier(.25,.6,.45,1) forwards}
+@keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--r))}}
+.sheet{position:fixed;inset:0;background:rgba(43,37,64,.35);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet>div{background:var(--paper);width:100%;max-width:640px;border-radius:28px 28px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));box-sizing:border-box;max-height:85%;overflow:auto}
+.sheet h2{margin:0 0 12px;font-size:22px;font-weight:800;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.tile{border:3px solid #fff;background:var(--sheet);border-radius:20px;padding:6px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font:700 13px/1.1 var(--font);color:var(--ink);box-shadow:0 3px 0 rgba(43,37,64,.10)}
+.tile canvas{width:64px;height:64px}
+.tile[disabled]{opacity:.45;cursor:not-allowed}
+.tile .st{font-size:12px;color:#e7a500;letter-spacing:1px;min-height:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .tool{flex:1 1 140px;font-size:15px;flex-direction:row;gap:8px}
+/* completed screen */
+.done{position:fixed;inset:0;z-index:50;background:var(--grape);display:flex;flex-direction:column;align-items:center;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 8px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 20px) max(16px,env(safe-area-inset-left,0px));box-sizing:border-box}
+.slime{position:absolute;left:0;top:0;width:100%;height:110px;pointer-events:none}
+.done h1{position:relative;margin:26px 0 14px;font-weight:800;font-size:40px;color:#fff6c9;letter-spacing:.03em;-webkit-text-stroke:2px #8a5a00;paint-order:stroke fill;text-shadow:0 4px 0 #b97f00;animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+.post{position:relative;width:min(300px,86vw);background:#fff;border-radius:18px;padding:10px;box-shadow:0 14px 30px rgba(43,37,64,.25);transform:rotate(-2deg);animation:pop .5s .1s both cubic-bezier(.3,1.6,.5,1)}
+.post .who{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;padding:0 2px 8px}
+.post .who b{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--sun),var(--pink));display:block}
+.post .who span:last-child{margin-left:auto;color:var(--muted);letter-spacing:2px}
+.post img{width:100%;aspect-ratio:1;display:block;border-radius:12px;background:#fff;border:1px solid #f0ebf7}
+.post .acts{display:flex;gap:12px;padding:8px 2px 0;align-items:center}
+.post .acts svg{width:24px;height:24px}
+.post .cap{font-weight:800;font-size:15px;padding:2px 2px 0}
+.post .cap small{display:block;font-weight:600;color:var(--muted);font-size:13px}
+.acc{width:min(300px,86vw);margin-top:18px;color:#fff;font-weight:800;text-align:center}
+.acc .tr{height:16px;border-radius:10px;background:rgba(255,255,255,.4);overflow:hidden;margin-top:4px;border:2px solid #fff}
+.acc .tr i{display:block;height:100%;background:var(--sun);width:0;transition:width 1.1s .4s cubic-bezier(.2,.8,.3,1)}
+.acc .stars{font-size:30px;color:#ffe066;letter-spacing:4px;text-shadow:0 2px 0 #b97f00;margin-top:6px}
+.btns{display:flex;gap:14px;margin-top:18px}
+.pill{border:4px solid #fff;border-radius:999px;padding:10px 26px;font:800 20px/1 var(--font);color:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(43,37,64,.25)}
+.pill.r{background:#3a9df0}.pill.n{background:#3ccf6a}
+@media (prefers-reduced-motion:reduce){#marker.idle svg{animation:none}.conf{display:none}.toast,.done h1,.post,.check{transition:opacity .2s;animation:none}}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="col">
+      <button class="stk" id="bSet" style="--c:#fff" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 2.8l1.7 2.3 2.8-.6.6 2.8 2.5 1.4-1.2 2.6 1.2 2.6-2.5 1.4-.6 2.8-2.8-.6L12 21.2l-1.7-2.3-2.8.6-.6-2.8-2.5-1.4L5.6 12 4.4 9.4l2.5-1.4.6-2.8 2.8.6z"/><circle cx="12" cy="12" r="3.2"/></svg></button>
+      <button class="stk" id="bDoodle" style="--c:var(--sun)" aria-label="Doodle pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5L9 20H4v-5z"/><path d="M13 6l5 5"/></svg></button>
+      <button class="stk" id="bLevels" style="--c:var(--mint)" aria-label="All levels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></button>
+    </div>
+    <div class="mid">
+      <div class="lvl" id="lvl">LEVEL 1</div>
+      <div class="card">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#ffe7a3"/><rect x="16" y="14" width="16" height="26" rx="4" fill="#ff8fb8"/><path d="M16 14l8-10 8 10z" fill="#ffd2b0"/><path d="M21.5 7.2L24 4l2.5 3.2z" fill="#2b2540"/><rect x="16" y="20" width="16" height="3" fill="#2b2540"/><circle cx="21" cy="29" r="1.8" fill="#2b2540"/><circle cx="27" cy="29" r="1.8" fill="#2b2540"/><path d="M21 33q3 3 6 0" stroke="#2b2540" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+        <div class="txt"><p id="clue">Guess who?</p><span id="word"></span></div>
+      </div>
+      <div class="bar" id="bar"><i id="barFill"></i></div>
+    </div>
+    <div class="col">
+      <a class="stk" id="bHome" href="../" style="--c:var(--lilac)" aria-label="All games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></a>
+      <button class="stk" id="bUndo" style="--c:var(--sun)" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L4 9l5 5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+      <button class="stk" id="bSkip" style="--c:var(--pink)" aria-label="Skip this step"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5l9 7-9 7zM12 5l9 7-9 7z"/></svg></button>
+    </div>
+  </header>
+
+  <div id="stage">
+    <div id="board"><canvas id="paint"></canvas><canvas id="lines"></canvas><canvas id="trace"></canvas></div>
+  </div>
+
+  <div id="dock"></div>
+</div>
+
+<div id="marker" class="idle" hidden><svg viewBox="0 0 52 280" aria-hidden="true">
+  <defs><linearGradient id="mb" x1="0" x2="1"><stop offset="0" stop-color="#7cc4ff"/><stop offset=".55" stop-color="#a9c8ff"/><stop offset="1" stop-color="#e3c9ff"/></linearGradient></defs>
+  <path class="m-tip" d="M26 0c7 0 10 12 10 26H16C16 12 19 0 26 0z"/>
+  <rect x="12" y="26" width="28" height="30" rx="4" fill="#d9ecff"/>
+  <rect class="m-tip" x="6" y="56" width="40" height="9"/>
+  <rect class="m-tip" x="6" y="69" width="40" height="5"/>
+  <rect x="6" y="74" width="40" height="206" rx="6" fill="url(#mb)"/>
+  <rect class="m-tip" x="19" y="96" width="14" height="168" rx="7"/>
+</svg></div>
+<div class="toast" id="toast"></div>
+<div id="overlay"></div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- shape helpers (100×100 unit box) ---------- */
+const PI=Math.PI;
+function arc(cx,cy,rx,ry,a0,a1,n=56){const p=[];for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;p.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)])}return p}
+const circ=(cx,cy,r)=>arc(cx,cy,r,r,-PI/2,1.5*PI,Math.max(24,Math.round(r*4)));
+function poly(pts,closed=true){const P=closed?[...pts,pts[0]]:pts,o=[];for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1];for(let j=0;j<12;j++)o.push([a[0]+(b[0]-a[0])*j/12,a[1]+(b[1]-a[1])*j/12])}o.push(P[P.length-1].slice());return o}
+function smooth(pts,closed=true,seg=14){const n=pts.length,o=[],g=i=>closed?pts[(i+n)%n]:pts[Math.max(0,Math.min(n-1,i))];const last=closed?n:n-1;
+  for(let i=0;i<last;i++){const p0=g(i-1),p1=g(i),p2=g(i+1),p3=g(i+2);for(let s=0;s<seg;s++){const t=s/seg,t2=t*t,t3=t2*t;o.push([0,1].map(k=>.5*((2*p1[k])+(-p0[k]+p2[k])*t+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*t2+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*t3)))}}
+  o.push((closed?pts[0]:pts[n-1]).slice());return o}
+const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+const mirror=pts=>pts.map(p=>[100-p[0],p[1]]);
+
+const C={red:"#ff5a5f",orange:"#ff9f1c",yellow:"#ffd23f",lime:"#9be15d",green:"#2ec27e",teal:"#18c5c5",sky:"#4cc9f0",blue:"#3a6df0",purple:"#8e6cff",pink:"#ff7ac6",blush:"#ffc2d9",lilac:"#d7c6ff",peach:"#ffd9b8",brown:"#a0643c",tan:"#f2b56b",grey:"#8d8a99",ink:"#2b2540",white:"#ffffff"};
+const ALL=["red","orange","yellow","lime","green","teal","sky","blue","purple","pink","blush","lilac","peach","tan","brown","grey","ink","white"].map(k=>C[k]);
+
+/* parts: traced one after another. regions: coloured back-to-front; a number points at a part. */
+const wingL=smooth([[48,46],[36,24],[18,20],[10,34],[22,50],[12,64],[20,80],[38,76],[48,56]]);
+const LEVELS=[
+ {name:"Balloon",ta:"பலூன்",clue:"I float up when you let go!",
+  parts:[arc(50,40,26,32,-PI/2,1.5*PI),smooth([[50,77],[44,84],[56,90],[50,98]],false)],
+  details:d=>{d.line(poly([[46,77],[54,77],[50,71.5]]));d.line(arc(40,28,9,12,PI*1.05,PI*1.4,20))},
+  regions:[{s:[0],o:[C.red,C.pink,C.sky]},{s:[poly([[46,77],[54,77],[50,71.5]])],o:[C.yellow,C.red]}]},
+ {name:"Sun",ta:"சூரியன்",clue:"I wake up before you do!",
+  parts:[circ(50,50,22),smooth(Array.from({length:16},(_,i)=>{const a=-PI/2+i*PI/8,r=i%2?31:42;return[50+r*Math.cos(a),50+r*Math.sin(a)]}))],
+  details:d=>{d.dot(43,46,2.4);d.dot(57,46,2.4);d.line(arc(50,51,8,6,.15*PI,.85*PI,20));d.line(circ(38,56,3.4));d.line(circ(62,56,3.4))},
+  regions:[{s:[1],o:[C.orange,C.yellow,C.red]},{s:[0],o:[C.yellow,C.peach,C.orange]},{s:[circ(38,56,3.4),circ(62,56,3.4)],o:[C.pink,C.red]}]},
+ {name:"Mango",ta:"மாம்பழம்",clue:"I'm the king of summer fruits!",
+  parts:[smooth([[46,24],[62,22],[76,32],[82,50],[78,70],[64,86],[46,90],[30,82],[24,66],[30,50],[36,36]]),smooth([[52,15],[64,6],[80,10],[66,18]])],
+  details:d=>{d.line([[50,23],[52,14]]);d.line(arc(40,50,8,14,PI*.95,PI*1.3,20));d.line(smooth([[55,14],[66,11],[76,11]],false))},
+  regions:[{s:[0],o:[C.yellow,C.orange,C.lime]},{s:[1],o:[C.green,C.lime]}]},
+ {name:"Fish",ta:"மீன்",clue:"I never take off my swimsuit!",
+  parts:[smooth([[14,50],[26,36],[46,30],[64,36],[72,50],[64,64],[46,70],[26,64]]),smooth([[68,50],[88,32],[82,50],[88,68]])],
+  details:d=>{d.line(smooth([[40,33],[50,19],[62,34]]));d.line(circ(28,46,4.5));d.dot(29,46,1.8);d.line(smooth([[40,38],[44,50],[40,62]],false));d.line(arc(54,48,5,5,-.5*PI,.5*PI,14));d.line(circ(10,30,3));d.line(circ(6,20,2))},
+  regions:[{s:[1],o:[C.orange,C.purple,C.sky]},{s:[smooth([[40,33],[50,19],[62,34]])],o:[C.pink,C.yellow,C.teal]},{s:[0],o:[C.orange,C.sky,C.yellow]}]},
+ {name:"Ice cream",ta:"ஐஸ்கிரீம்",clue:"I'm cool, but I melt in the sun!",
+  parts:[poly([[30,53],[70,53],[50,94]]),smooth([[26,52],[28,36],[38,26],[50,23],[62,26],[72,36],[74,52],[68,57],[62,52],[56,59],[50,53],[44,59],[38,52],[32,57]]),circ(50,18,5)],
+  details:d=>{const A=[30,53],B=[70,53],Cc=[50,94];for(const t of [.16,.44]){d.line([lerp(A,Cc,t),lerp(B,Cc,t+.36)]);d.line([lerp(B,Cc,t),lerp(A,Cc,t+.36)])}d.line(smooth([[51,13],[54,8],[60,6]],false));d.line(arc(38,38,5,7,PI*1.05,PI*1.45,14))},
+  regions:[{s:[0],o:[C.tan,C.brown,C.yellow]},{s:[1],o:[C.pink,C.lime,C.brown]},{s:[2],o:[C.red,C.pink]}]},
+ {name:"House",ta:"வீடு",clue:"I have a door but no feet!",
+  parts:[poly([[20,90],[20,50],[80,50],[80,90]]),poly([[12,52],[50,18],[88,52]])],
+  details:d=>{d.line(poly([[43,90],[43,68],[57,68],[57,90]],false));d.dot(54,80,1.4);
+   for(const x of [26,62]){d.line(poly([[x,60],[x+12,60],[x+12,72],[x,72]]));d.line([[x+6,60],[x+6,72]]);d.line([[x,66],[x+12,66]])}d.line(circ(50,38,4))},
+  regions:[{s:[0],o:[C.yellow,C.peach,C.sky]},{s:[poly([[26,60],[38,60],[38,72],[26,72]]),poly([[62,60],[74,60],[74,72],[62,72]])],o:[C.sky,C.yellow]},{s:[poly([[43,90],[43,68],[57,68],[57,90]])],o:[C.brown,C.red,C.green]},{s:[1],o:[C.red,C.brown,C.purple]}]},
+ {name:"Car",ta:"கார்",clue:"I go beep beep on the road!",
+  parts:[poly([[10,70],[10,56],[24,52],[34,36],[66,36],[78,52],[90,56],[90,70]]),circ(30,72,9),circ(72,72,9)],
+  details:d=>{d.line(poly([[37,40],[48,40],[48,52],[29,52]]));d.line(poly([[54,40],[64,40],[73,52],[54,52]]));d.line([[51,40],[51,68]]);d.line(circ(30,72,3.5));d.line(circ(72,72,3.5));d.line(circ(85,61,2.6))},
+  regions:[{s:[0],o:[C.red,C.blue,C.yellow]},{s:[poly([[37,40],[48,40],[48,52],[29,52]]),poly([[54,40],[64,40],[73,52],[54,52]])],o:[C.sky,C.lilac]},{s:[1,2],o:[C.ink,C.grey]},{s:[circ(30,72,3.5),circ(72,72,3.5),circ(85,61,2.6)],o:[C.yellow,C.white]}]},
+ {name:"Bunny",ta:"முயல்",clue:"I hop, hop, hop for carrots!",
+  parts:[smooth([[18,74],[28,65],[50,62],[72,66],[86,74],[72,82],[50,86],[28,83]]),smooth([[20,70],[8,60],[4,72],[8,84],[20,78]]),
+   smooth([[36,52],[34,40],[38,30],[40,14],[44,8],[48,14],[48,26],[52,26],[56,14],[60,8],[64,14],[66,30],[70,40],[68,52],[60,60],[44,60]])],
+  details:d=>{d.line(smooth([[41,27],[43.5,14],[46,27]]));d.line(smooth([[55,27],[58,14],[62,27]]));d.dot(45,44,2.5);d.dot(59,44,2.5);
+   d.line(arc(49.5,49.5,2.5,2.2,.1*PI,.9*PI,12));d.line(arc(54.5,49.5,2.5,2.2,.1*PI,.9*PI,12));d.line(circ(42,64,4.5));d.line(circ(62,64,4.5));
+   d.line([[40,72],[45,73.5]]);d.line([[56,78],[62,76.5]]);d.line([[70,70],[74,72]])},
+  regions:[{s:[1],o:[C.green,C.lime,C.purple]},{s:[2],o:[C.blush,C.lilac,C.peach]},{s:[smooth([[41,27],[43.5,14],[46,27]]),smooth([[55,27],[58,14],[62,27]])],o:[C.pink,C.purple]},{s:[0],o:[C.orange,C.red,C.yellow]},{s:[circ(42,64,4.5),circ(62,64,4.5)],o:[C.pink,C.white]}]},
+ {name:"Butterfly",ta:"வண்ணத்துப்பூச்சி",clue:"I was a caterpillar once!",
+  parts:[wingL,mirror(wingL),smooth([[50,30],[54,38],[54,70],[50,80],[46,70],[46,38]])],
+  details:d=>{d.line(smooth([[49,31],[44,20],[38,17]],false));d.line(smooth([[51,31],[56,20],[62,17]],false));d.dot(37,17,1.8);d.dot(63,17,1.8);
+   for(const c of [[28,36,5],[72,36,5],[30,68,4],[70,68,4]])d.line(circ(...c))},
+  regions:[{s:[0],o:[C.purple,C.pink,C.sky]},{s:[1],o:[C.purple,C.pink,C.sky]},{s:[circ(28,36,5),circ(72,36,5),circ(30,68,4),circ(70,68,4)],o:[C.yellow,C.white,C.orange]},{s:[2],o:[C.brown,C.ink,C.yellow]}]},
+];
+const DOODLE={name:"Doodle pad",ta:"ஓவியம்",clue:"Draw anything you like!",parts:[],details:()=>{},regions:[]};
+
+/* ---------- state ---------- */
+const stage=$("#stage"),board=$("#board"),paint=$("#paint"),lines=$("#lines"),trace=$("#trace"),marker=$("#marker");
+const pctx=paint.getContext("2d",{willReadFrequently:true}),lctx=lines.getContext("2d"),tctx=trace.getContext("2d");
+const scratch=document.createElement("canvas").getContext("2d");
+const dpr=Math.min(window.devicePixelRatio||1,2.5);
+let S=0,levelIdx=store.get("kc_level",0),mode="trace",doodle=false;
+let prog=store.get("kc_prog2",{unlocked:1,stars:{}});
+let part=0,dots=[],strokes=[],cur=null,waitUp=false,ink={on:0,all:0};
+let reg=0,regPath=null,samples=[],covered=null,coverHist=[],color=C.red,showMore=false,checkShown=false;
+let undo=[],tool="brush",sound=store.get("kc_sound",true),stampN=0;
+const K=()=>S*.0092,O=()=>S*.04;
+const toPx=u=>O()+u*K(),toU=p=>(p-O())/K();
+const level=()=>doodle?DOODLE:LEVELS[levelIdx];
+
+/* ---------- audio ---------- */
+let ac=null,lastBlip=0;
+function tone(f,t=.08,type="sine",v=.12,delay=0){if(!sound)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain(),s=ac.currentTime+delay;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,s);g.gain.exponentialRampToValueAtTime(.001,s+t);o.connect(g).connect(ac.destination);o.start(s);o.stop(s+t+.02)}catch(e){}}
+const chime=()=>[523,659,784,1046].forEach((f,i)=>tone(f,.25,"triangle",.14,i*.09));
+function blip(fr){const n=performance.now();if(n-lastBlip<55)return;lastBlip=n;tone(420+fr*700,.06,"sine",.09)}
+
+/* ---------- drawing the picture ---------- */
+function drawPic(ctx,lv,size,nParts=lv.parts.length,detailA=1){
+  const k=size*.0092,o=size*.04,tp=u=>o+u*k;
+  ctx.save();ctx.strokeStyle=C.ink;ctx.fillStyle=C.ink;ctx.lineJoin="round";ctx.lineCap="round";
+  const line=(q,w)=>{ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(tp(q[0][0]),tp(q[0][1]));for(let i=1;i<q.length;i++)ctx.lineTo(tp(q[i][0]),tp(q[i][1]));ctx.stroke()};
+  for(let i=0;i<nParts;i++)line(lv.parts[i],size*.019);
+  if(detailA>0){ctx.globalAlpha=detailA;
+    lv.details({line:q=>line(q,size*.014),dot(x,y,r){ctx.beginPath();ctx.arc(tp(x),tp(y),r*k,0,2*PI);ctx.fill()}})}
+  ctx.restore();
+}
+let detailA=0;
+function redrawLines(){lctx.setTransform(dpr,0,0,dpr,0,0);lctx.clearRect(0,0,S,S);if(!doodle)drawPic(lctx,level(),S,mode==="trace"?part:level().parts.length,detailA)}
+
+/* ---------- tracing (one part at a time) ---------- */
+function resample(pts,step){if(!pts.length)return[];const closed=Math.hypot(pts[0][0]-pts[pts.length-1][0],pts[0][1]-pts[pts.length-1][1])<1;
+  const o=[pts[0].slice()];let acc=0;
+  for(let i=1;i<pts.length;i++){let a=pts[i-1].slice();const b=pts[i];let seg=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    while(seg>0&&acc+seg>=step){const t=(step-acc)/seg;a=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];o.push(a.slice());seg=Math.hypot(b[0]-a[0],b[1]-a[1]);acc=0}acc+=seg}
+  if(closed)while(o.length>2&&Math.hypot(o[o.length-1][0]-o[0][0],o[o.length-1][1]-o[0][1])<step*.7)o.pop();
+  else{const e=pts[pts.length-1];if(Math.hypot(o[o.length-1][0]-e[0],o[o.length-1][1]-e[1])>step*.4)o.push(e.slice())}
+  return o}
+function setupPart(){dots=resample(level().parts[part],4.2).map(p=>({x:p[0],y:p[1],hit:false}));strokes=[];cur=null}
+const HIT=6.8;
+function markHits(x,y){let n=0,best=1e9;for(const d of dots){const q=(d.x-x)**2+(d.y-y)**2;if(q<best)best=q;if(!d.hit&&q<HIT*HIT){d.hit=true;n++}}ink.all++;if(best<49)ink.on++;return n}
+function hitFrac(){return dots.length?dots.filter(d=>d.hit).length/dots.length:0}
+let rq=0;function renderTrace(){if(rq)return;rq=requestAnimationFrame(()=>{rq=0;drawTrace()})}
+function drawTrace(){
+  tctx.setTransform(dpr,0,0,dpr,0,0);tctx.clearRect(0,0,S,S);if(mode!=="trace"||!dots.length)return;
+  const r=Math.max(2.2,S*.0075);tctx.fillStyle="#b4adc6";
+  for(const d of dots)if(!d.hit){tctx.beginPath();tctx.arc(toPx(d.x),toPx(d.y),r,0,2*PI);tctx.fill()}
+  const s=dots[0],kx=S*.02,x=toPx(s.x),y=toPx(s.y);tctx.strokeStyle=C.ink;tctx.lineWidth=S*.012;tctx.lineCap="round";
+  if(!s.hit){tctx.beginPath();tctx.moveTo(x-kx,y-kx);tctx.lineTo(x+kx,y+kx);tctx.moveTo(x+kx,y-kx);tctx.lineTo(x-kx,y+kx);tctx.stroke()}
+  if(hitFrac()<.08&&dots.length>7){const a=dots[3],b=dots[6],ang=Math.atan2(b.y-a.y,b.x-a.x),cx=toPx(dots[5].x),cy=toPx(dots[5].y),q=S*.026;
+    tctx.save();tctx.translate(cx,cy);tctx.rotate(ang);tctx.strokeStyle="#ff6fa8";tctx.lineWidth=S*.012;tctx.beginPath();tctx.moveTo(-q*.6,-q);tctx.lineTo(q*.5,0);tctx.lineTo(-q*.6,q);tctx.stroke();tctx.restore()}
+  tctx.strokeStyle=C.ink;tctx.lineWidth=S*.019;tctx.lineJoin="round";
+  for(const st of strokes){if(!st.length)continue;tctx.beginPath();tctx.moveTo(toPx(st[0][0]),toPx(st[0][1]));tctx.lineTo(toPx(st[0][0])+.1,toPx(st[0][1]));for(let i=1;i<st.length;i++)tctx.lineTo(toPx(st[i][0]),toPx(st[i][1]));tctx.stroke()}
+  $("#barFill").style.width=Math.round(hitFrac()*100)+"%";
+}
+function recomputeHits(){dots.forEach(d=>d.hit=false);const keep={...ink};for(const st of strokes)for(const p of st)markHits(p[0],p[1]);ink=keep}
+function partDone(){
+  waitUp=true;cur=null;tone(784,.12,"triangle",.12);part++;
+  if(part<level().parts.length){setupPart();redrawLines();drawTrace();updateCard();placeMarkerIdle();return}
+  // whole outline traced → reveal details, then start colouring
+  mode="reveal";dots=[];drawTrace();marker.hidden=true;chime();confetti(24);
+  const t0=performance.now();const step=n=>{detailA=Math.min(1,(n-t0)/450);redrawLines();if(detailA<1)requestAnimationFrame(step)};requestAnimationFrame(step);
+  toast(`It's a ${level().name}!`,level().ta);updateCard();
+  setTimeout(()=>enterRegion(0),1300);
+}
+
+/* ---------- guided colouring (one region at a time) ---------- */
+function pathU(shapes){const p=new Path2D();for(const s of shapes){p.moveTo(s[0][0],s[0][1]);for(let i=1;i<s.length;i++)p.lineTo(s[i][0],s[i][1]);p.closePath()}return p}
+const shapesOf=r=>r.s.map(x=>typeof x==="number"?level().parts[x]:x);
+function clipTo(ctx,path){ctx.setTransform(dpr*K(),0,0,dpr*K(),dpr*O(),dpr*O());ctx.clip(path);ctx.setTransform(dpr,0,0,dpr,0,0)}
+function enterRegion(i){
+  reg=i;mode="pick";const lv=level(),R=lv.regions[i];regPath=pathU(shapesOf(R));
+  const later=lv.regions.slice(i+1).map(r=>pathU(shapesOf(r)));
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const s of shapesOf(R))for(const p of s){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])}
+  const step=Math.max(1.2,Math.min(2.2,Math.sqrt((x1-x0)*(y1-y0)/500)));samples=[];
+  for(let y=y0;y<=y1;y+=step)for(let x=x0;x<=x1;x+=step)if(scratch.isPointInPath(regPath,x,y)&&!later.some(p=>scratch.isPointInPath(p,x,y)))samples.push(x,y);
+  if(samples.length<4)for(let y=y0;y<=y1;y+=step)for(let x=x0;x<=x1;x+=step)if(scratch.isPointInPath(regPath,x,y))samples.push(x,y);
+  covered=new Uint8Array(samples.length/2);checkShown=false;undo=[];showMore=false;
+  // hatch the area to colour
+  pctx.save();clipTo(pctx,regPath);pctx.fillStyle="#fff";pctx.fillRect(0,0,S,S);pctx.strokeStyle="#d9d2e8";pctx.lineWidth=Math.max(1.5,S*.005);pctx.beginPath();
+  const g=S*.026;for(let t=-S;t<S*2;t+=g){pctx.moveTo(t,0);pctx.lineTo(t-S,S)}pctx.stroke();pctx.restore();
+  $("#barFill").style.width="0%";updateCard();buildDock();marker.hidden=true;
+}
+function coverFrac(){if(!covered||!covered.length)return 0;let n=0;for(const c of covered)n+=c;return n/covered.length}
+function scrub(a,b){
+  const r=S*.052;pctx.save();clipTo(pctx,regPath);pctx.strokeStyle=color;pctx.lineWidth=r*2;pctx.lineCap="round";pctx.lineJoin="round";
+  pctx.beginPath();pctx.moveTo(a[0],a[1]);pctx.lineTo(b[0]+.01,b[1]);pctx.stroke();pctx.restore();
+  const ua=[toU(a[0]),toU(a[1])],ub=[toU(b[0]),toU(b[1])],ru=r/K(),rr=ru*ru,n=Math.max(1,Math.ceil(Math.hypot(ub[0]-ua[0],ub[1]-ua[1])/1.5));
+  let got=0;for(let s=0;s<=n;s++){const q=lerp(ua,ub,s/n);for(let j=0;j<covered.length;j++)if(!covered[j]){const dx=samples[j*2]-q[0],dy=samples[j*2+1]-q[1];if(dx*dx+dy*dy<rr){covered[j]=1;got++}}}
+  const f=coverFrac();if(got)blip(f);$("#barFill").style.width=Math.round(f*100)+"%";
+  if(f>=.7&&!checkShown){checkShown=true;buildDock();tone(988,.12,"triangle",.1)}
+}
+function finishRegion(skipped){
+  coverHist.push(skipped?0:coverFrac());
+  pctx.save();clipTo(pctx,regPath);pctx.fillStyle=color;pctx.fillRect(0,0,S,S);pctx.restore();tone(1046,.15,"triangle",.12);
+  if(reg+1<level().regions.length)enterRegion(reg+1);else finishLevel();
+}
+
+/* ---------- completed screen ---------- */
+function finishLevel(){
+  mode="done";marker.hidden=true;chime();
+  const tr=ink.all?ink.on/ink.all:.6,co=coverHist.length?coverHist.reduce((a,b)=>a+b,0)/coverHist.length:0;
+  const acc=Math.max(10,Math.min(100,Math.round(100*(.4*tr+.6*co))));const stars=acc>=85?3:acc>=60?2:1;
+  prog.stars[levelIdx]=Math.max(prog.stars[levelIdx]||0,stars);prog.unlocked=Math.max(prog.unlocked,Math.min(LEVELS.length,levelIdx+2));store.set("kc_prog2",prog);
+  const c=document.createElement("canvas");c.width=c.height=paint.width;const x=c.getContext("2d");x.drawImage(paint,0,0);x.drawImage(lines,0,0);
+  let url="";try{url=c.toDataURL("image/png")}catch(e){}
+  let drips="";for(let i=0;i<14;i++){const cx=i*30+8+Math.random()*10,d=30+Math.random()*60,w=10+Math.random()*10;drips+=`<rect x="${cx-w/2}" y="0" width="${w}" height="${d}"/><circle cx="${cx}" cy="${d}" r="${w/2+2}"/>`}
+  const lv=level(),last=levelIdx>=LEVELS.length-1;
+  $("#overlay").innerHTML=`<div class="done" role="dialog" aria-label="Completed">
+   <svg class="slime" viewBox="0 0 400 110" preserveAspectRatio="none" aria-hidden="true"><g fill="var(--slime)"><rect x="0" y="0" width="400" height="34"/>${drips}</g></svg>
+   <h1>COMPLETED!</h1>
+   <div class="post"><div class="who"><b></b><span>Kutty Artist</span><span>•••</span></div>
+    <img alt="Your coloured ${lv.name}" src="${url}">
+    <div class="acts"><svg viewBox="0 0 24 24" fill="${C.red}"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="${C.ink}" stroke-width="2"><path d="M4 12a8 8 0 1114 5.3L20 21l-4-1.3A8 8 0 014 12z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="${C.ink}" stroke-width="2" stroke-linejoin="round"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg></div>
+    <div class="cap">Nice one! <small>${lv.name} · ${lv.ta}</small></div></div>
+   <div class="acc">Accuracy ${acc}%<div class="tr"><i id="accBar"></i></div><div class="stars" aria-label="${stars} stars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div></div>
+   <div class="btns"><button class="pill r" id="dReplay">REPLAY</button><button class="pill n" id="dNext">${last?"LEVELS":"NEXT"}</button></div></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=$("#accBar");if(b)b.style.width=acc+"%"}));
+  confetti(60);
+  $("#dReplay").onclick=()=>{closeOverlay();loadLevel(levelIdx)};
+  $("#dNext").onclick=()=>{closeOverlay();if(last)openLevels();else loadLevel(levelIdx+1)};
+}
+
+/* ---------- doodle pad ---------- */
+function star(cx,cy,R,r){const p=[];for(let i=0;i<10;i++){const a=-PI/2+i*PI/5,q=i%2?r:R;p.push([cx+q*Math.cos(a),cy+q*Math.sin(a)])}return p}
+function stamp(x,y,col){pctx.setTransform(dpr,0,0,dpr,0,0);pctx.fillStyle=col;const s=S*.055,k=stampN++%3;pctx.save();pctx.translate(x,y);pctx.rotate((Math.random()-.5)*.6);pctx.beginPath();
+  if(k===0)star(0,0,s,s*.45).forEach((p,i)=>i?pctx.lineTo(p[0],p[1]):pctx.moveTo(p[0],p[1]));
+  else if(k===1){for(let i=0;i<=60;i++){const t=i/60*2*PI,hx=16*Math.sin(t)**3,hy=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);i?pctx.lineTo(hx*s/17,-hy*s/17):pctx.moveTo(hx*s/17,-hy*s/17)}}
+  else{for(let i=0;i<5;i++){const a=i*2*PI/5,cx=Math.cos(a)*s*.5,cy=Math.sin(a)*s*.5;pctx.moveTo(cx+s*.42,cy);pctx.arc(cx,cy,s*.42,0,2*PI)}pctx.fill();pctx.beginPath();pctx.fillStyle=C.yellow;pctx.arc(0,0,s*.32,0,2*PI)}
+  pctx.fill();pctx.restore()}
+function brushTo(p){pctx.setTransform(dpr,0,0,dpr,0,0);pctx.strokeStyle=tool==="eraser"?"#ffffff":color;pctx.lineWidth=tool==="eraser"?S*.07:S*.035;pctx.lineCap="round";pctx.lineJoin="round";pctx.beginPath();pctx.moveTo(cur[0],cur[1]);pctx.lineTo(p[0]+.01,p[1]);pctx.stroke();cur=p}
+
+/* ---------- undo ---------- */
+function pushUndo(){try{undo.push({img:pctx.getImageData(0,0,paint.width,paint.height),cov:covered?covered.slice():null,chk:checkShown});if(undo.length>6)undo.shift()}catch(e){}}
+
+/* ---------- pointer ---------- */
+let ptype="mouse",down=false;
+function tipOf(e){const off=ptype==="touch"?[-50,-100]:[0,0];return[e.clientX+off[0],e.clientY+off[1]]}
+function local(t){const r=board.getBoundingClientRect();return[t[0]-r.left,t[1]-r.top]}
+function placeMarker(x,y,idle){marker.classList.toggle("idle",!!idle);marker.style.transform=`translate(${x-26}px,${y}px) rotate(-28deg)`}
+function placeMarkerIdle(){
+  const r=board.getBoundingClientRect();
+  if(mode==="trace"&&dots.length){marker.hidden=false;const d=dots.find(q=>!q.hit)||dots[0];placeMarker(r.left+toPx(d.x),r.top+toPx(d.y)+8,true);return}
+  if(mode==="color"&&samples.length){let mx=0,my=0;const n=samples.length/2;for(let i=0;i<n;i++){mx+=samples[i*2];my+=samples[i*2+1]}marker.hidden=false;placeMarker(r.left+toPx(mx/n),r.top+toPx(my/n),true);return}
+  marker.hidden=true}
+stage.addEventListener("pointerdown",e=>{
+  ptype=e.pointerType||"mouse";down=true;waitUp=false;try{stage.setPointerCapture(e.pointerId)}catch(_){}
+  const t=tipOf(e),p=local(t);
+  if(mode==="trace"){marker.hidden=false;placeMarker(t[0],t[1]);cur=[toU(p[0]),toU(p[1])];strokes.push([cur]);if(markHits(cur[0],cur[1]))blip(hitFrac());renderTrace()}
+  else if(mode==="pick"){const o=document.querySelector(".opts");if(o){o.classList.remove("wiggle");void o.offsetWidth;o.classList.add("wiggle")}toast("Pick a colour first","Tap a square below");down=false}
+  else if(mode==="color"){marker.hidden=false;placeMarker(t[0],t[1]);pushUndo();cur=p;scrub(p,p)}
+  else if(mode==="doodle"){if(tool==="stamp"){const q=local([e.clientX,e.clientY]);pushUndo();stamp(q[0],q[1],color);tone(880,.08,"square",.05);down=false}else{marker.hidden=false;placeMarker(t[0],t[1]);pushUndo();cur=p;brushTo([p[0],p[1]])}}
+});
+stage.addEventListener("pointermove",e=>{
+  if(!down||waitUp)return;const t=tipOf(e),p=local(t);
+  if(mode==="trace"&&cur){placeMarker(t[0],t[1]);const u=[toU(p[0]),toU(p[1])],last=strokes[strokes.length-1],a=last[last.length-1];
+    const n=Math.max(1,Math.ceil(Math.hypot(u[0]-a[0],u[1]-a[1])/2));let got=0;for(let s=1;s<=n;s++){const q=lerp(a,u,s/n);got+=markHits(q[0],q[1])}
+    last.push(u);if(got)blip(hitFrac());renderTrace();if(hitFrac()>=.88)partDone()}
+  else if(mode==="color"&&cur){placeMarker(t[0],t[1]);scrub(cur,p);cur=p}
+  else if(mode==="doodle"&&cur){placeMarker(t[0],t[1]);brushTo(p)}
+});
+function end(){down=false;cur=null;waitUp=false;placeMarkerIdle()}
+stage.addEventListener("pointerup",end);stage.addEventListener("pointercancel",end);
+
+/* ---------- UI ---------- */
+function updateCard(){
+  const lv=level();$("#lvl").textContent=doodle?"DOODLE PAD":"LEVEL "+(levelIdx+1);
+  if(mode==="trace"){$("#clue").textContent=lv.clue;$("#word").textContent=lv.parts.length>1?`Trace part ${part+1} of ${lv.parts.length}`:"Trace the dots to find out!"}
+  else if(doodle){$("#clue").textContent=lv.clue;$("#word").textContent=lv.ta}
+  else{$("#clue").textContent=lv.name;$("#word").textContent=lv.ta+(mode==="pick"||mode==="color"?` · colour ${reg+1} of ${lv.regions.length}`:"")}
+  const showBar=mode==="trace"||mode==="color"||mode==="pick";$("#bar").style.visibility=showBar?"visible":"hidden";
+  $("#bSkip").style.visibility=(mode==="trace"||mode==="pick"||mode==="color")?"visible":"hidden";
+}
+const ICON={
+ brush:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4L10 14"/><path d="M10 14c-3-1-6 1-6 6 3 0 6-1 6-6z" fill="currentColor"/></svg>',
+ stamp:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z"/></svg>',
+ eraser:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 15l9-9 7 7-6 6H7z"/><path d="M8 10l7 7"/><path d="M13 20h8"/></svg>',
+ clear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>'};
+function setColor(c){color=c;document.documentElement.style.setProperty("--tip",c)}
+function buildDock(){
+  const dk=$("#dock");
+  if(mode==="trace"){dk.innerHTML='<div class="hint">Start at ✕ and follow the dots</div>';return}
+  if(mode==="reveal"||mode==="done"){dk.innerHTML="";return}
+  if(mode==="pick"||mode==="color"){
+    const R=level().regions[reg],picked=mode==="color";
+    dk.innerHTML=`${showMore?`<div class="palette" role="group" aria-label="All colours">${ALL.map((c,i)=>`<button class="sw" id="all${i}" style="--c:${c}" aria-label="Colour ${i+1}" aria-pressed="${picked&&c===color}" data-c="${c}"></button>`).join("")}</div>`:""}
+     <div class="opts" role="group" aria-label="Colours">${R.o.map((c,i)=>`<button class="opt" id="opt${i}" style="--c:${c}" aria-label="Colour ${i+1}" aria-pressed="${picked&&c===color}" data-c="${c}"></button>`).join("")}
+     <button class="opt more" id="optMore" aria-label="More colours" aria-pressed="${showMore}">+</button>
+     ${checkShown?'<button class="check" id="bCheck" aria-label="Done with this colour"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>':""}</div>
+     ${!picked?'<div class="hint">Pick a colour</div>':""}`;
+    dk.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{setColor(b.dataset.c);tone(740,.05,"sine",.06);if(mode==="pick"){mode="color";updateCard()}buildDock();placeMarkerIdle()});
+    $("#optMore").onclick=()=>{showMore=!showMore;buildDock()};
+    if(checkShown)$("#bCheck").onclick=()=>finishRegion(false);
+    return}
+  // doodle
+  dk.innerHTML=`<div class="palette" role="group" aria-label="Colours">${ALL.map((c,i)=>`<button class="sw" id="dsw${i}" style="--c:${c}" aria-label="Colour ${i+1}" aria-pressed="${c===color}" data-c="${c}"></button>`).join("")}</div>
+  <div class="tools">${["brush","stamp","eraser","clear"].map(t=>`<button class="tool" id="t_${t}" data-t="${t}" aria-pressed="${t===tool}">${ICON[t]}${{brush:"Brush",stamp:"Sticker",eraser:"Eraser",clear:"Clear"}[t]}</button>`).join("")}</div>`;
+  dk.querySelectorAll(".sw").forEach(b=>b.onclick=()=>{setColor(b.dataset.c);dk.querySelectorAll(".sw").forEach(x=>x.setAttribute("aria-pressed",x===b));tone(740,.05,"sine",.06)});
+  dk.querySelectorAll(".tool").forEach(b=>b.onclick=()=>{if(b.dataset.t==="clear"){pushUndo();clearPaint();return}tool=b.dataset.t;dk.querySelectorAll(".tool").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+}
+function toast(a,b){const t=$("#toast");t.innerHTML=a+(b?`<small>${b}</small>`:"");t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),1500)}
+function confetti(n){const cs=[C.red,C.yellow,C.sky,C.purple,C.green,C.pink];for(let i=0;i<n;i++){const s=document.createElement("i");s.className="conf";s.style.left=Math.random()*100+"vw";s.style.background=cs[i%cs.length];s.style.setProperty("--d",(1.4+Math.random()*1.2)+"s");s.style.setProperty("--dx",(Math.random()*160-80)+"px");s.style.setProperty("--r",(Math.random()*900-450)+"deg");s.style.animationDelay=Math.random()*.3+"s";document.body.appendChild(s);setTimeout(()=>s.remove(),3200)}}
+function clearPaint(){pctx.setTransform(1,0,0,1,0,0);pctx.fillStyle="#fff";pctx.fillRect(0,0,paint.width,paint.height)}
+
+function loadLevel(i,asDoodle=false){
+  doodle=asDoodle;if(!asDoodle){levelIdx=i;store.set("kc_level",i)}
+  mode=asDoodle?"doodle":"trace";part=0;detailA=asDoodle?1:0;ink={on:0,all:0};coverHist=[];samples=[];covered=null;checkShown=false;showMore=false;
+  if(asDoodle){tool="brush";if(color===C.white)setColor(C.red)}
+  clearPaint();undo=[];if(!asDoodle)setupPart();else dots=[];
+  redrawLines();drawTrace();updateCard();buildDock();placeMarkerIdle();
+}
+
+/* top buttons */
+$("#bUndo").onclick=()=>{
+  if(mode==="trace"){strokes.pop();recomputeHits();drawTrace();placeMarkerIdle()}
+  else if((mode==="color"||mode==="doodle")&&undo.length){const u=undo.pop();pctx.putImageData(u.img,0,0);if(u.cov){covered=u.cov;const was=checkShown;checkShown=u.chk&&coverFrac()>=.7;$("#barFill").style.width=Math.round(coverFrac()*100)+"%";if(was!==checkShown)buildDock()}}
+  tone(330,.06)};
+$("#bSkip").onclick=()=>{if(mode==="trace"){dots.forEach(d=>d.hit=true);partDone();waitUp=false}else if(mode==="pick"||mode==="color"){if(mode==="pick")setColor(level().regions[reg].o[0]);finishRegion(true)}};
+$("#bDoodle").onclick=()=>{closeOverlay();loadLevel(levelIdx,true)};
+$("#bLevels").onclick=openLevels;
+$("#bSet").onclick=openSettings;
+
+function closeOverlay(){$("#overlay").innerHTML=""}
+function openLevels(){
+  const ov=$("#overlay");
+  ov.innerHTML=`<div class="sheet" id="sh"><div role="dialog" aria-label="Levels"><h2>Pick a picture</h2><div class="grid">${LEVELS.map((l,i)=>{const lock=i>=prog.unlocked,st=prog.stars[i]||0;return `<button class="tile" id="lv${i}" data-i="${i}" ${lock?"disabled":""}><canvas width="128" height="128"></canvas>${lock?"Locked":"Level "+(i+1)}<span class="st">${st?"★".repeat(st)+"☆".repeat(3-st):""}</span></button>`}).join("")}</div></div></div>`;
+  ov.querySelectorAll(".tile").forEach(b=>{const c=b.querySelector("canvas").getContext("2d"),lv=LEVELS[+b.dataset.i];
+    if(b.disabled){c.setLineDash([2,7]);c.lineCap="round";c.strokeStyle="#b4adc6";c.lineWidth=5;for(const p of lv.parts){c.beginPath();p.forEach((q,k)=>{const x=128*(.04+q[0]*.0092),y=128*(.04+q[1]*.0092);k?c.lineTo(x,y):c.moveTo(x,y)});c.stroke()}}
+    else drawPic(c,lv,128);
+    b.onclick=()=>{closeOverlay();loadLevel(+b.dataset.i)}});
+  $("#sh").onclick=e=>{if(e.target.id==="sh")closeOverlay()};
+}
+function openSettings(){
+  const ov=$("#overlay");let armed=false;
+  ov.innerHTML=`<div class="sheet" id="sh"><div role="dialog" aria-label="Settings"><h2>Settings</h2><div class="row">
+   <button class="tool" id="sSound">${sound?"🔊 Sound on":"🔈 Sound off"}</button>
+   <button class="tool" id="sRestart">↺ Restart picture</button>
+   <button class="tool" id="sReset">Reset all levels</button>
+   <button class="tool" id="sClose" style="background:var(--mint)">Done</button></div></div></div>`;
+  $("#sSound").onclick=()=>{sound=!sound;store.set("kc_sound",sound);$("#sSound").textContent=sound?"🔊 Sound on":"🔈 Sound off";tone(660,.1)};
+  $("#sRestart").onclick=()=>{closeOverlay();loadLevel(levelIdx,doodle)};
+  $("#sReset").onclick=e=>{if(!armed){armed=true;e.currentTarget.textContent="Tap again to reset";e.currentTarget.style.background="var(--pink)";return}prog={unlocked:1,stars:{}};store.set("kc_prog2",prog);closeOverlay();loadLevel(0)};
+  $("#sClose").onclick=closeOverlay;$("#sh").onclick=e=>{if(e.target.id==="sh")closeOverlay()};
+}
+
+/* ---------- layout ---------- */
+function layout(){
+  const r=stage.getBoundingClientRect();const n=Math.floor(Math.min(r.width,r.height,620));if(n<60||n===S){placeMarkerIdle();return}
+  let old=null;if(S){old=document.createElement("canvas");old.width=paint.width;old.height=paint.height;old.getContext("2d").drawImage(paint,0,0)}
+  S=n;board.style.width=board.style.height=S+"px";
+  for(const c of [paint,lines,trace]){c.width=c.height=Math.round(S*dpr);c.style.width=c.style.height=S+"px"}
+  clearPaint();if(old)pctx.drawImage(old,0,0,paint.width,paint.height);undo=[];
+  redrawLines();drawTrace();placeMarkerIdle();
+}
+new ResizeObserver(layout).observe(stage);
+if(levelIdx>=prog.unlocked)levelIdx=prog.unlocked-1;
+loadLevel(levelIdx);layout();
+})();
+</script>
+<script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("../sw.js",{scope:"../"}).catch(()=>{}));</script>
+</body>
+</html>
