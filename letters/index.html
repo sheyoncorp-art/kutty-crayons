@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kutty Letters</title>
+<meta name="theme-color" content="#fff6ea">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:10px;padding-bottom:20px}
+.lt{aspect-ratio:1;border-radius:20px;border:4px solid #fff;background:var(--c);box-shadow:0 4px 0 rgba(43,37,64,.14);font:800 38px/1 var(--font);color:#fff;text-shadow:0 2px 0 rgba(43,37,64,.25);cursor:pointer;position:relative;padding:0}
+.lt i{position:absolute;bottom:2px;left:0;right:0;font-style:normal;font-size:12px;color:#fff6c9;letter-spacing:1px;text-shadow:none}
+.lt:active{transform:scale(.95)}
+#stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+#tc{touch-action:none;background:#fff;border-radius:28px;box-shadow:0 10px 26px rgba(43,37,64,.12),0 0 0 3px #fff}
+.reveal{display:flex;align-items:center;gap:14px;background:#fff;border-radius:24px;padding:8px 18px 8px 8px;box-shadow:0 6px 16px rgba(43,37,64,.10);min-height:96px;min-width:240px;justify-content:center}
+.reveal.on{animation:bounceIn .45s}
+.reveal canvas{width:84px;height:84px}
+.reveal b{display:block;font-size:28px;line-height:1.05}
+.reveal small{display:block;color:var(--muted);font-weight:700;font-size:15px}
+.reveal .wait{color:var(--muted);font-weight:700;font-size:16px}
+.nav{display:flex;gap:12px;justify-content:center;align-items:center}
+.nav .stk{width:56px;height:56px}
+#bNext.ready{animation:pulse 1.2s ease-in-out infinite;background:var(--mint)}
+</style>
+</head>
+<body>
+<div id="picker" class="screen scroll">
+  <header class="ph">
+    <a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="pHome"></a>
+    <div style="flex:1"><h1>Kutty Letters</h1><p>Trace a letter to see its picture</p></div>
+    <button class="stk" id="pSound" style="--c:var(--sun)"></button>
+  </header>
+  <div class="tabs" role="group" aria-label="Alphabet"><button id="tabEn" aria-pressed="true">A B C</button><button id="tabTa" aria-pressed="false">அ ஆ இ</button></div>
+  <div class="lgrid" id="lgrid"></div>
+</div>
+<div id="game" class="screen" hidden>
+  <header class="gh">
+    <button class="stk" id="bBack" style="--c:var(--mint)" aria-label="All letters"></button>
+    <div class="card"><div class="txt"><span class="lbl" id="lbl"></span><p class="say" id="say"></p></div><button class="hear" id="bHear" aria-label="Say it again"></button></div>
+    <button class="stk" id="bSound" style="--c:var(--sun)"></button>
+  </header>
+  <div id="stage">
+    <canvas id="tc"></canvas>
+    <div class="reveal" id="reveal"></div>
+    <div class="nav"><button class="stk" id="bPrev" style="--c:#fff" aria-label="Previous letter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="stk" id="bRedo" style="--c:#fff" aria-label="Trace again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/></svg></button>
+      <button class="stk" id="bNext" style="--c:#fff" aria-label="Next letter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button></div>
+  </div>
+</div>
+<div id="overlay"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$;
+$("#pHome").innerHTML=K.HOME;$("#bBack").innerHTML=K.GRID;$("#bHear").innerHTML=K.HEAR;K.soundButton($("#bSound"));K.soundButton($("#pSound"));
+const EN=[["A","apple"],["B","ball"],["C","cat"],["D","puppy","Dog"],["E","elephant"],["F","fish"],["G","grapes"],["H","house"],["I","icecream"],["J","jug"],["K","kite"],["L","lemon"],["M","mango"],["N","nest"],["O","orange"],["P","bird","Parrot"],["Q","crown","Queen's crown"],["R","bunny","Rabbit"],["S","sun"],["T","tree"],["U","umbrella"],["V","van"],["W","watermelon"],["X","xylophone"],["Y","yoyo"],["Z","zebra"]];
+const TA=[["அ","pineapple","அன்னாசி","annaasi","a"],["ஆ","goat","ஆடு","aadu","aa"],["இ","leaf","இலை","ilai","i"],["ஈ","fly","ஈ","ee","ee"],["உ","ural","உரல்","ural","u"],["ஊ","swing","ஊஞ்சல்","oonjal","oo"],["எ","mouse","எலி","eli","e"],["ஏ","ladder","ஏணி","aeni","ae"],["ஐ","five","ஐந்து","ainthu","ai"],["ஒ","one","ஒன்று","ondru","o"],["ஓ","boat","ஓடம்","odam","oh"],["ஔ","bottle","ஔடதம்","audatham","au"]];
+const COLS=["#ff5a5f","#ff9f1c","#f0b400","#2ec27e","#18b3b3","#3a9df0","#8e6cff","#ff7ac6"];
+let tab=K.store.get("kl_tab","en"),done=K.store.get("kl_done",{en:{},ta:{}}),idx=0,tr=null,ok=false,down=false,last=null,col="#ff5a5f",S=0,run=0,sayParts="";
+const list=()=>tab==="en"?EN:TA;
+const cv=$("#tc"),ctx=cv.getContext("2d"),dpr=Math.min(window.devicePixelRatio||1,2.5);
+
+function picker(){
+  run++;K.hush();$("#game").hidden=true;$("#picker").hidden=false;$("#overlay").innerHTML="";
+  $("#tabEn").setAttribute("aria-pressed",String(tab==="en"));$("#tabTa").setAttribute("aria-pressed",String(tab==="ta"));
+  const g=$("#lgrid");g.innerHTML="";
+  list().forEach((L,i)=>{const b=document.createElement("button");b.className="lt";b.id="lt"+i;b.style.setProperty("--c",COLS[i%COLS.length]);b.textContent=L[0];
+    if(done[tab][L[0]]){const s=document.createElement("i");s.textContent="★★★";b.append(s)}
+    b.onclick=()=>{K.actx();open(i)};g.append(b)});
+}
+$("#tabEn").onclick=()=>{tab="en";K.store.set("kl_tab",tab);picker()};
+$("#tabTa").onclick=()=>{tab="ta";K.store.set("kl_tab",tab);picker()};
+$("#bBack").onclick=picker;
+
+function word(L){return tab==="en"?(L[2]||K.label(L[1])):L[2]}
+function intro(L){return tab==="en"?[{t:L[0]+"."},{t:"Trace the letter "+L[0]}]:[{t:L[0],ta:L[4]},{t:"Trace this letter"}]}
+function outro(L){return tab==="en"?[{t:`${L[0]} for ${word(L)}!`}]:[{t:L[0],ta:L[4]},{t:L[2],ta:L[3]}]}
+function open(i){
+  idx=i;run++;ok=false;down=false;const L=list()[i];col=COLS[i%COLS.length];
+  $("#picker").hidden=true;$("#game").hidden=false;
+  $("#lbl").textContent=(tab==="en"?"English":"தமிழ் உயிர் எழுத்து")+" · "+(i+1)+" of "+list().length;
+  $("#say").textContent=tab==="en"?`Trace the letter ${L[0]}`:`Trace ${L[0]}`;sayParts=intro(L);K.speak(sayParts);
+  $("#reveal").className="reveal";$("#reveal").innerHTML='<span class="wait">Trace the letter to see the picture</span>';
+  $("#bNext").classList.remove("ready");$("#bPrev").style.visibility=i>0?"visible":"hidden";
+  layout();tr=new K.Trace(L[0]);
+  const my=run;const loop=t=>{if(my!==run)return;draw(t/1000);requestAnimationFrame(loop)};requestAnimationFrame(loop);
+}
+function draw(t){if(!S||!tr)return;ctx.setTransform(S*dpr/100,0,0,S*dpr/100,0,0);ctx.clearRect(0,0,100,100);tr.draw(ctx,col,ok,t)}
+function layout(){const st=$("#stage").getBoundingClientRect(),n=Math.floor(Math.min(st.width,st.height-190,460));if(n<80)return;S=n;cv.style.width=cv.style.height=S+"px";cv.width=cv.height=Math.round(S*dpr)}
+new ResizeObserver(()=>{if(!$("#game").hidden)layout()}).observe($("#stage"));
+const toU=e=>{const b=cv.getBoundingClientRect();return[(e.clientX-b.left)/b.width*100,(e.clientY-b.top)/b.height*100]};
+cv.addEventListener("pointerdown",e=>{if(ok||!tr)return;K.actx();down=true;last=toU(e);tr.strokes.push([last]);tr.add(last,last);try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener("pointermove",e=>{if(!down||ok)return;const p=toU(e);tr.strokes[tr.strokes.length-1].push(p);if(tr.add(last,p)&&Math.random()<.25)K.sfx.tap();last=p;if(tr.progress()>=.74)finish()});
+const up=()=>{if(down&&!ok&&tr&&tr.off>tr.on*1.2&&tr.off>40){K.toast("Stay on the letter!");tr.off=0;tr.on=0}down=false};
+cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+function finish(){
+  ok=true;down=false;const L=list()[idx];K.sfx.yay();K.confetti(26);
+  done[tab][L[0]]=1;K.store.set("kl_done",done);
+  const rv=$("#reveal");rv.innerHTML="";rv.append(K.art(L[1],84));const d=document.createElement("div");
+  d.innerHTML=tab==="en"?`<b>${L[0]}${L[0].toLowerCase()} · ${word(L)}</b><small>${L[0]} for ${word(L)}</small>`:`<b>${L[0]} · ${L[2]}</b><small>${L[0]} for ${L[3]}</small>`;
+  rv.append(d);rv.classList.add("on");$("#say").textContent=tab==="en"?`${L[0]} for ${word(L)}!`:`${L[0]} - ${L[2]}`;sayParts=outro(L);K.speak(sayParts);
+  $("#bNext").classList.add("ready");
+  if(Object.keys(done[tab]).length===list().length&&!K.store.get("kl_cheer_"+tab,0)){K.store.set("kl_cheer_"+tab,1);setTimeout(allDone,2600)}
+}
+function allDone(){K.confetti(70);K.speak(tab==="en"?"Wow! You traced all the letters!":"Super! All Tamil letters done!");
+  $("#overlay").innerHTML=`<div class="done" style="--doneBg:#3a9df0"><h1>${tab==="en"?"A TO Z!":"அ முதல் ஔ!"}</h1><div class="big" id="bigArt"></div><p>You traced every letter!<small>எல்லா எழுத்துகளும் முடிந்தது</small></p><div class="stars">★★★</div><div class="btns"><button class="pill b" id="dOk">Keep playing</button></div></div>`;
+  $("#bigArt").append(K.art("crown",200));$("#dOk").onclick=()=>{$("#overlay").innerHTML=""}}
+$("#bHear").onclick=()=>K.speak(sayParts);
+$("#bRedo").onclick=()=>open(idx);
+$("#bPrev").onclick=()=>{if(idx>0)open(idx-1)};
+$("#bNext").onclick=()=>{if(idx<list().length-1)open(idx+1);else picker()};
+K.fontsReady().then(picker);
+window.__kl={open,finish,setTab:t=>{tab=t}};
+K.sw();
+})();
+</script>
+</body>
+</html>

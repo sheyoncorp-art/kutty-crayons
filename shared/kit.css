@@ -1,0 +1,59 @@
+/* Kutty Games shared look: cream paper, sticker buttons, chunky rounded type. Single bright look on purpose. */
+:root{
+  --paper:#fff6ea; --sheet:#ffffff; --ink:#2b2540; --muted:#8a83a3;
+  --sun:#ffd166; --pink:#ff8fb8; --mint:#7fe0c3; --sky:#8fd3ff; --lilac:#cbb8ff; --tomato:#ff6b5a; --grass:#9be15d;
+  --font:"Baloo Thambi 2","Nirmala UI","Latha",system-ui,sans-serif;
+  color-scheme:light;
+}
+html{box-sizing:border-box;height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{height:100%;margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;color:var(--ink)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.screen{height:100%;display:flex;flex-direction:column;gap:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px;max-width:680px;margin:0 auto}
+.scroll{overflow:auto}
+.stk{width:52px;height:52px;border-radius:17px;border:3px solid #fff;background:var(--c,var(--sky));box-shadow:0 3px 0 rgba(43,37,64,.16),0 8px 16px rgba(43,37,64,.10);display:grid;place-items:center;cursor:pointer;padding:0;color:var(--ink);text-decoration:none;flex:none}
+.stk:active{transform:translateY(2px) scale(.96)}
+.stk svg{width:28px;height:28px}
+.gh{display:grid;grid-template-columns:52px 1fr 52px;gap:10px;align-items:center}
+.card{display:flex;align-items:center;gap:10px;background:var(--sheet);border:3px solid #fde3cf;border-radius:20px;padding:6px 12px;box-shadow:0 6px 14px rgba(43,37,64,.08);min-width:0;min-height:62px}
+.card .txt{min-width:0;flex:1}
+.card .lbl{display:block;font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1.2}
+.card .say{margin:0;font-weight:800;font-size:18px;line-height:1.15;text-wrap:balance}
+.card .hear{flex:none;width:38px;height:38px;border-radius:12px;border:0;background:#f3ecff;display:grid;place-items:center;cursor:pointer;padding:0}
+.card .hear svg{width:22px;height:22px}
+.ph{display:flex;gap:12px;align-items:center;padding-top:4px}
+.ph h1{margin:0;font-size:32px;font-weight:800;line-height:1}
+.ph p{margin:3px 0 0;color:var(--muted);font-weight:600;font-size:15px}
+.rounds{display:flex;justify-content:center;gap:8px;min-height:18px}
+.rounds i{width:12px;height:12px;border-radius:50%;background:#e6def3}
+.rounds i.on{background:var(--mint)}
+.rounds i.cur{background:var(--tomato);transform:scale(1.3)}
+.toast{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%) scale(.6);opacity:0;background:var(--sheet);border:4px solid var(--sun);border-radius:24px;padding:10px 22px;font-weight:800;font-size:24px;z-index:60;pointer-events:none;transition:all .3s cubic-bezier(.3,1.6,.5,1);text-align:center;box-shadow:0 12px 30px rgba(43,37,64,.18);max-width:80vw}
+.toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.conf{position:fixed;top:-20px;width:10px;height:14px;border-radius:3px;z-index:70;pointer-events:none;animation:fall var(--d) cubic-bezier(.25,.6,.45,1) forwards}
+@keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--r))}}
+@keyframes pop{from{transform:scale(.3)}}
+@keyframes pulse{50%{transform:scale(1.06)}}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+@keyframes bounceIn{0%{transform:scale(.3)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.shake{animation:shake .4s}
+.ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:50;filter:drop-shadow(0 10px 10px rgba(43,37,64,.25))}
+.ghost.back{transition:transform .3s ease,opacity .3s}
+.done{position:fixed;inset:0;z-index:55;background:var(--doneBg,#8e6cff);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 20px) max(16px,env(safe-area-inset-left,0px))}
+.done h1{margin:0 0 10px;font-weight:800;font-size:46px;color:#fff6c9;letter-spacing:.03em;-webkit-text-stroke:2px rgba(43,37,64,.55);paint-order:stroke fill;text-shadow:0 4px 0 rgba(43,37,64,.35);animation:pop .5s cubic-bezier(.3,1.6,.5,1);text-align:center}
+.done .big{width:min(240px,66vw);aspect-ratio:1;border-radius:36px;background:#fff;box-shadow:0 14px 30px rgba(43,37,64,.25);display:grid;place-items:center;animation:pop .5s .1s both cubic-bezier(.3,1.6,.5,1)}
+.done .big canvas{width:84%;height:84%}
+.done p{margin:14px 0 0;color:#fff;font-weight:800;font-size:21px;text-align:center;text-shadow:0 2px 0 rgba(43,37,64,.3)}
+.done small{display:block;font-size:15px;font-weight:700;opacity:.92}
+.stars{font-size:40px;color:#ffe066;letter-spacing:6px;text-shadow:0 3px 0 rgba(43,37,64,.35);margin-top:4px}
+.btns{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+.pill{border:4px solid #fff;border-radius:999px;padding:10px 22px;font:800 19px/1 var(--font);color:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(43,37,64,.25)}
+.pill.a{background:#3a9df0}.pill.b{background:#3ccf6a}.pill.c{background:#ff6b5a}
+.go{border:4px solid #fff;background:var(--tomato);color:#fff;font:800 22px/1 var(--font);border-radius:999px;padding:14px 30px;box-shadow:0 5px 0 #d84a3b,0 12px 20px rgba(43,37,64,.15);cursor:pointer}
+.go.pulse{animation:pulse 1.4s ease-in-out infinite}
+.tabs{display:flex;gap:8px;background:#f3ecff;border-radius:999px;padding:4px;align-self:flex-start}
+.tabs button{border:0;background:none;border-radius:999px;padding:8px 18px;font:800 17px/1 var(--font);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:#fff;box-shadow:0 2px 0 rgba(43,37,64,.12)}
+@media (prefers-reduced-motion:reduce){.conf{display:none}.go.pulse{animation:none}}

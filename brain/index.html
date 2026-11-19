@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kutty Brain Box</title>
+<meta name="theme-color" content="#fff6ea">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+#area{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding-bottom:8px}
+.tile{width:var(--ts,96px);height:var(--ts,96px);border-radius:24px;border:4px solid #fff;background:#fff;box-shadow:0 4px 0 rgba(43,37,64,.12),0 10px 18px rgba(43,37,64,.08);display:grid;place-items:center;padding:0;cursor:pointer;position:relative}
+.tile canvas{width:80%;height:80%;pointer-events:none}
+.tile:active{transform:scale(.96)}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.q{background:#fff;border:4px dashed #ff8fb8;box-shadow:none;font:800 46px/1 var(--font);color:#ff8fb8;cursor:default}
+.q.filled{border-style:solid;border-color:#fff;animation:bounceIn .4s}
+.opts .tile{background:#fff3e6}
+.mgrid{display:grid;gap:10px}
+.mcard{width:var(--ts);height:var(--ts);perspective:700px;border:0;background:none;padding:0;cursor:pointer}
+.mcard .in{position:relative;width:100%;height:100%;transition:transform .35s;transform-style:preserve-3d}
+.mcard.open .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;border-radius:20px;border:4px solid #fff;box-shadow:0 4px 0 rgba(43,37,64,.12);display:grid;place-items:center;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.back{background:#8e6cff;background-image:radial-gradient(circle at 30% 30%,rgba(255,255,255,.35) 0 10%,transparent 11%),radial-gradient(circle at 70% 70%,rgba(255,255,255,.25) 0 8%,transparent 9%);color:#fff;font:800 34px/1 var(--font)}
+.front{background:#fff;transform:rotateY(180deg)}
+.front canvas{width:78%;height:78%}
+.mcard.got .front{background:#e6fbef}
+.shadow{background:#f3ecff;box-shadow:none;cursor:default}
+.shadow.got{background:#e6fbef;animation:bounceIn .4s}
+.baskets{display:flex;gap:14px;width:100%;justify-content:center}
+.basket{flex:1;max-width:240px;min-height:150px;border-radius:26px;border:4px solid #fff;background:var(--bk);box-shadow:0 4px 0 rgba(43,37,64,.12);display:flex;flex-direction:column;align-items:center;padding:8px;gap:6px}
+.basket .hd{display:flex;align-items:center;gap:6px;font:800 19px/1 var(--font)}
+.basket .hd canvas{width:40px;height:40px}
+.basket .in{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.basket .in canvas{width:40px;height:40px;animation:bounceIn .35s}
+.odd .tile{--ts:min(38vw,150px)}
+.start{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.start .art{display:flex;gap:6px}
+.start h2{margin:0;font-size:30px;font-weight:800}
+.start p{margin:0;color:var(--muted);font-weight:700;font-size:16px;max-width:30ch}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header class="gh">
+    <a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="bHome"></a>
+    <div class="card"><div class="txt"><span class="lbl" id="lbl">Brain Box</span><p class="say" id="say">Let's play!</p></div><button class="hear" id="bHear" aria-label="Say it again"></button></div>
+    <button class="stk" id="bSound" style="--c:var(--sun)"></button>
+  </header>
+  <div class="rounds" id="rounds"></div>
+  <div id="area"></div>
+</div>
+<div id="overlay"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$,area=$("#area");
+$("#bHome").innerHTML=K.HOME;$("#bHear").innerHTML=K.HEAR;K.soundButton($("#bSound"));
+let lv=K.store.get("kb_lv",{memory:0,pattern:0,shadow:0,odd:0,sort:0});
+let order=[],round=0,mistakes=0,run=0,sayText="";
+const NAMES={memory:"Memory pairs",pattern:"What comes next?",shadow:"Shadow match",odd:"Odd one out",sort:"Sort it"};
+const POOL=["apple","banana","mango","orange","grapes","strawberry","cherry","watermelon","cat","bear","elephant","puppy","bunny","fish","bird","car","bus","ball","star","sun","house","flower","tree","balloon","umbrella","kite","icecream","cupcake","boat","crown"];
+function say(t,extra){sayText=t;$("#say").textContent=t;K.speak(extra||t)}
+$("#bHear").onclick=()=>K.speak(sayText);
+function dots(){$("#rounds").innerHTML=order.map((_,i)=>`<i class="${i<round?"on":i===round?"cur":""}"></i>`).join("")}
+function tileSize(n,rows){const r=area.getBoundingClientRect();return Math.floor(Math.min(140,(r.width-10*(n-1))/n,(r.height-20)/rows))}
+function artTile(name,ts,cls){const b=document.createElement("button");b.className="tile"+(cls?" "+cls:"");b.style.setProperty("--ts",ts+"px");b.append(K.art(name,ts*.8));b.dataset.n=name;b.setAttribute("aria-label",K.label(name));return b}
+
+function start(){
+  area.innerHTML=`<div class="start"><div class="art" id="sArt"></div><h2>Brain Box</h2><p>5 quick puzzles: pairs, patterns, shadows, odd one out and sorting.</p><button class="go pulse" id="bGo">Let's play!</button></div>`;
+  ["apple","star","cat"].forEach(n=>$("#sArt").append(K.art(n,70)));
+  order=[];round=0;dots();$("#lbl").textContent="Brain Box";$("#say").textContent="Ready for 5 puzzles?";sayText="Ready for 5 puzzles?";
+  $("#bGo").onclick=()=>{K.actx();K.sfx.pop();order=K.shuffle(Object.keys(NAMES));round=0;next()};
+}
+function next(){run++;mistakes=0;dots();const t=order[round];$("#lbl").textContent=NAMES[t]+" · Level "+(lv[t]+1);area.innerHTML="";GAMES[t](lv[t])}
+function miss(el){mistakes++;K.sfx.oops();if(el)K.shake(el);K.speak("Try again")}
+function win(){
+  const t=order[round],my=run;K.sfx.yay();K.toast(K.praise());K.speak(K.praise());
+  if(mistakes===0)lv[t]=Math.min(3,lv[t]+1);else if(mistakes>=3)lv[t]=Math.max(0,lv[t]-1);K.store.set("kb_lv",lv);
+  setTimeout(()=>{if(my!==run)return;round++;if(round>=order.length)finish();else next()},1500);
+}
+function finish(){
+  dots();K.confetti(70);K.speak("Brain power! You finished all the puzzles!");
+  const d=K.store.get("kb_sessions",0)+1;K.store.set("kb_sessions",d);
+  $("#overlay").innerHTML=`<div class="done" style="--doneBg:#8e6cff"><h1>BRAIN POWER!</h1><div class="big" id="bigArt"></div><p>You finished all 5 puzzles!<small>Games played: ${d}</small></p><div class="stars">★★★</div><div class="btns"><button class="pill b" id="dAgain">Play again</button><a class="pill a" href="../" style="text-decoration:none">All games</a></div></div>`;
+  $("#bigArt").append(K.art("star",200));
+  $("#dAgain").onclick=()=>{$("#overlay").innerHTML="";order=K.shuffle(Object.keys(NAMES));round=0;next()};
+}
+
+const GAMES={
+  memory(l){
+    const pairs=[2,3,4,6][l],cols=pairs===2?2:pairs===3?3:4,rows=Math.ceil(pairs*2/cols);
+    const items=K.shuffle(POOL).slice(0,pairs),deck=K.shuffle(items.concat(items));
+    const r=area.getBoundingClientRect(),ts=Math.floor(Math.min(130,(r.width-10*(cols-1))/cols,(r.height-10*(rows-1))/rows));
+    const g=document.createElement("div");g.className="mgrid";g.style.gridTemplateColumns=`repeat(${cols},${ts}px)`;
+    let open=[],got=0,busy=false;
+    deck.forEach((n,i)=>{const b=document.createElement("button");b.className="mcard";b.id="m"+i;b.style.setProperty("--ts",ts+"px");b.dataset.n=n;b.setAttribute("aria-label","Card "+(i+1));
+      b.innerHTML='<div class="in"><div class="face back">?</div><div class="face front"></div></div>';b.querySelector(".front").append(K.art(n,ts*.78));
+      b.onclick=()=>{if(busy||b.classList.contains("open"))return;K.sfx.flip();b.classList.add("open");open.push(b);
+        if(open.length===2){const[a,c]=open;open=[];
+          if(a.dataset.n===c.dataset.n){a.classList.add("got");c.classList.add("got");got++;K.sfx.ding();K.speak(K.label(a.dataset.n));if(got===pairs)setTimeout(win,500)}
+          else{busy=true;mistakes+= (mistakes<99&&got<pairs)?0.5:0;setTimeout(()=>{a.classList.remove("open");c.classList.remove("open");busy=false},900)}}};
+      g.append(b)});
+    area.append(g);say("Find the matching pairs!");
+  },
+  pattern(l){
+    const shapes=[["A","B"],["A","A","B"],["A","B","C"],["A","A","B","B"]][l];
+    const kinds=K.shuffle(POOL).slice(0,3),map={A:kinds[0],B:kinds[1],C:kinds[2]};
+    const len=l===3?7:6,seq=[];for(let i=0;i<len;i++)seq.push(map[shapes[i%shapes.length]]);
+    const ans=seq[len-1],shown=seq.slice(0,len-1);
+    const others=K.shuffle(POOL.filter(n=>n!==ans&&!seq.includes(n))).slice(0,1),optsN=K.shuffle([ans,...K.shuffle(Object.values(map).filter(n=>n!==ans&&seq.includes(n))).slice(0,1),...others]).slice(0,3);
+    const ts=tileSize(Math.min(len,4),4);
+    const row=document.createElement("div");row.className="row";shown.forEach(n=>{const t=artTile(n,ts);t.disabled=true;t.style.cursor="default";row.append(t)});
+    const q=document.createElement("div");q.className="tile q";q.style.setProperty("--ts",ts+"px");q.textContent="?";row.append(q);
+    const opts=document.createElement("div");opts.className="row opts";const ots=Math.min(120,Math.floor(ts*1.15));
+    optsN.forEach((n,i)=>{const t=artTile(n,ots);t.id="opt"+i;t.onclick=()=>{if(q.classList.contains("filled"))return;if(n===ans){q.textContent="";q.classList.add("filled");q.append(K.art(n,ts*.8));K.sfx.ding();win()}else miss(t)};opts.append(t)});
+    area.append(row,opts);say("What comes next?");
+  },
+  shadow(l){
+    const n=[2,3,3,4][l],items=K.shuffle(POOL.filter(x=>!["orange","cherry","grapes","icecream"].includes(x))).slice(0,n);
+    const ts=Math.min(120,tileSize(n,3));
+    const top=document.createElement("div");top.className="row";const bot=document.createElement("div");bot.className="row";
+    let got=0;const slots=[];
+    K.shuffle(items).forEach(name=>{const s=document.createElement("div");s.className="tile shadow";s.style.setProperty("--ts",ts+"px");s.dataset.n=name;s.append(K.art(name,ts*.8,{shadow:true}));bot.append(s);slots.push(s)});
+    items.forEach((name,i)=>{const t=artTile(name,ts);t.id="src"+i;
+      K.drag(t,{start:()=>!t.dataset.done,make:()=>K.art(name,ts),
+        drop:(x,y)=>{const s=slots.find(s=>!s.dataset.done&&K.hit(s,x,y,14));if(!s)return false;if(s.dataset.n!==name){miss(s);return false}
+          s.dataset.done=1;t.dataset.done=1;s.classList.add("got");s.innerHTML="";s.append(K.art(name,ts*.8));t.style.visibility="hidden";K.sfx.ding();K.speak(K.label(name));got++;if(got===n)setTimeout(win,400);return true},
+        miss:()=>K.sfx.oops()});top.append(t)});
+    area.append(top,bot);say("Drag each picture to its shadow");
+  },
+  odd(l){
+    const cats={fruit:"fruit",animal:"animal",vehicle:"vehicle",toy:"toy"};
+    let items,odd,text;
+    const pool=c=>K.ofCat(c).filter(n=>POOL.includes(n)||["van","yoyo","xylophone","zebra","goat","mouse","pineapple","lemon"].includes(n));
+    if(l===0){const a=K.pick(POOL);odd=K.pick(POOL.filter(n=>K.cat(n)!==K.cat(a)));items=[a,a,a,odd];text="Which one is different?"}
+    else{const cs=l===1?["fruit","animal"]:Object.keys(cats);const A=K.pick(cs),B=K.pick(cs.filter(x=>x!==A));
+      items=K.shuffle(pool(A)).slice(0,3);odd=K.pick(pool(B));items.push(odd);text=`Which one is not ${A==="animal"?"an animal":"a "+A}?`}
+    items=K.shuffle(items);
+    const g=document.createElement("div");g.className="row odd";g.style.maxWidth="340px";
+    const ts=Math.min(150,tileSize(2,2.2));
+    items.forEach((n,i)=>{const t=artTile(n,ts);t.id="odd"+i;t.onclick=()=>{if(t.dataset.done)return;if(n===odd){t.dataset.done=1;t.style.background="#e6fbef";K.sfx.ding();K.speak(K.label(n));win()}else miss(t)};g.append(t)});
+    area.append(g);say(text);
+  },
+  sort(l){
+    let A,B,items,label;
+    if(l<=1){const pairs=[["fruit","animal"],["vehicle","animal"],["fruit","toy"]];const p=l===0?pairs[0]:K.pick(pairs);
+      const pool=c=>K.ofCat(c);const n=l===0?2:3;items=K.shuffle([...K.shuffle(pool(p[0])).slice(0,n).map(x=>({n:x,k:0})),...K.shuffle(pool(p[1])).slice(0,n).map(x=>({n:x,k:1}))]);
+      const nice={fruit:"Fruits",animal:"Animals",vehicle:"Vehicles",toy:"Toys"},icon={fruit:"apple",animal:"cat",vehicle:"car",toy:"ball"};
+      A={t:nice[p[0]],i:icon[p[0]],bk:"#ffe3d1"};B={t:nice[p[1]],i:icon[p[1]],bk:"#d9ecff"};label=`${A.t} in this basket, ${B.t.toLowerCase()} in that basket`}
+    else if(l===2){const obj=K.pick(["apple","ball","star","fish","balloon","flower"]);items=K.shuffle([0,0,0,1,1,1].map(k=>({n:obj,k,s:k?.55:1})));A={t:"Big",i:obj,bk:"#ffe3d1"};B={t:"Small",i:obj,bk:"#d9ecff",s:.55};label="Big ones here, small ones there"}
+    else{const red=K.shuffle(["apple","strawberry","cherry","tomato","car","balloon"]).slice(0,3),yel=K.shuffle(["banana","lemon","star","sun","bus","pineapple"]).slice(0,3);
+      items=K.shuffle([...red.map(n=>({n,k:0})),...yel.map(n=>({n,k:1}))]);A={t:"Red",i:"apple",bk:"#ffd6d6"};B={t:"Yellow",i:"banana",bk:"#fff1b8"};label="Red ones here, yellow ones there"}
+    const ts=Math.min(96,tileSize(items.length>4?3:4,4));
+    const top=document.createElement("div");top.className="row";
+    const bs=document.createElement("div");bs.className="baskets";
+    const mk=(o,k)=>{const b=document.createElement("div");b.className="basket";b.id="basket"+k;b.style.setProperty("--bk",o.bk);b.innerHTML='<div class="hd"></div><div class="in"></div>';b.querySelector(".hd").append(K.art(o.i,40,{scale:o.s||1}),document.createTextNode(o.t));bs.append(b);return b};
+    const bA=mk(A,0),bB=mk(B,1);let got=0;
+    items.forEach((it,i)=>{const t=artTile(it.n,ts);t.id="item"+i;if(it.s){t.firstChild.style.transform=`scale(${it.s})`}
+      K.drag(t,{start:()=>!t.dataset.done,make:()=>K.art(it.n,ts*(it.s||1)),
+        drop:(x,y)=>{const into=K.hit(bA,x,y,10)?0:K.hit(bB,x,y,10)?1:-1;if(into<0)return false;if(into!==it.k){miss(into?bB:bA);return false}
+          t.dataset.done=1;t.style.visibility="hidden";(into?bB:bA).querySelector(".in").append(K.art(it.n,40,{scale:it.s||1}));K.sfx.ding();got++;if(got===items.length)setTimeout(win,300);return true},
+        miss:()=>K.sfx.oops()});top.append(t)});
+    area.append(top,bs);say("Sort them! "+label,label);
+  }
+};
+start();
+window.__kb={next:()=>{run++;round++;if(round>=order.length)finish();else next()},state:()=>({round,type:order[round]})};
+K.sw();
+})();
+</script>
+</body>
+</html>

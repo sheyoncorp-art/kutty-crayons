@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kutty Puzzle</title>
+<meta name="theme-color" content="#fff6ea">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;padding-bottom:20px}
+.pc{border:4px solid #fff;background:#fff;border-radius:24px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;box-shadow:0 4px 0 rgba(43,37,64,.10),0 10px 20px rgba(43,37,64,.06)}
+.pc canvas{width:100%;height:auto;aspect-ratio:1;border-radius:16px}
+.pc b{font-size:17px;font-weight:800;line-height:1.1}
+.pc i{font-style:normal;color:#e7a500;font-size:13px;font-weight:700;min-height:16px}
+.pc:active{transform:scale(.97)}
+.sizes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sizes span{font-weight:800;color:var(--muted)}
+#area{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;gap:12px}
+#board{position:relative;border-radius:22px;box-shadow:0 10px 26px rgba(43,37,64,.12),0 0 0 4px #fff;background:#fff;flex:none}
+#board canvas{display:block;border-radius:22px}
+#tray{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-content:flex-start;overflow:auto;flex:1;min-height:0;width:100%;padding:4px}
+.piece{border:0;padding:0;background:none;cursor:grab;filter:drop-shadow(0 4px 5px rgba(43,37,64,.2));touch-action:none}
+.piece canvas{display:block;pointer-events:none;border-radius:8px}
+</style>
+</head>
+<body>
+<div id="picker" class="screen scroll">
+  <header class="ph">
+    <a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="pHome"></a>
+    <div style="flex:1"><h1>Kutty Puzzle</h1><p>Pick a picture and put it back together</p></div>
+    <button class="stk" id="pSound" style="--c:var(--sun)"></button>
+  </header>
+  <div class="sizes"><span>Pieces:</span><div class="tabs" role="group" aria-label="Number of pieces"><button id="sz4">4</button><button id="sz6">6</button><button id="sz9">9</button></div></div>
+  <div class="pgrid" id="pgrid"></div>
+</div>
+<div id="game" class="screen" hidden>
+  <header class="gh">
+    <button class="stk" id="bBack" style="--c:var(--mint)" aria-label="All puzzles"></button>
+    <div class="card"><div class="txt"><span class="lbl" id="lbl"></span><p class="say" id="say"></p></div><button class="hear" id="bHear" aria-label="Say it again"></button></div>
+    <button class="stk" id="bSound" style="--c:var(--sun)"></button>
+  </header>
+  <div id="area"><div id="board"><canvas id="bc"></canvas></div><div id="tray"></div></div>
+</div>
+<div id="overlay"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$,{circ,ell,rrect,fs,seg}=K;
+$("#pHome").innerHTML=K.HOME;$("#bBack").innerHTML=K.GRID;$("#bHear").innerHTML=K.HEAR;K.soundButton($("#bSound"));K.soundButton($("#pSound"));
+const place=(c,n,x,y,s,flip)=>{c.save();c.translate(x,y);if(flip)c.scale(-1,1);c.translate(-s/2,-s/2);c.scale(s/100,s/100);K.drawArt(c,n);c.restore()};
+const sky=(c,a,b,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,a);g.addColorStop(1,b);c.fillStyle=g;c.fillRect(0,0,100,h)};
+const cloud=(c,x,y,s)=>{circ(c,x,y,5*s,"#fff");circ(c,x+5*s,y-2*s,6*s,"#fff");circ(c,x+10*s,y,5*s,"#fff")};
+const SCENES=[
+  {id:"garden",name:"Elephant's garden",draw(c){sky(c,"#9fd8ff","#e3f5ff",64);cloud(c,30,14,1);c.fillStyle="#9be15d";c.fillRect(0,62,100,38);ell(c,20,66,40,10,"#86d14a");place(c,"sun",84,16,26);place(c,"tree",18,50,46);place(c,"elephant",58,64,52);place(c,"flower",86,82,24);place(c,"flower",36,88,18)}},
+  {id:"fruits",name:"Fruit basket",draw(c){c.fillStyle="#ffe3d1";c.fillRect(0,0,100,100);c.fillStyle="#ffd0b0";for(let y=0;y<4;y++)for(let x=0;x<10;x++)if((x+y)%2)c.fillRect(x*10,62+y*10,10,10);place(c,"banana",50,36,32);place(c,"apple",32,44,26);place(c,"mango",68,44,26);place(c,"grapes",48,46,22);place(c,"basket",50,66,64);place(c,"pineapple",14,74,26);place(c,"cherry",86,80,20);place(c,"strawberry",86,58,16)}},
+  {id:"house",name:"My house",draw(c){sky(c,"#8fd3ff","#dff3ff",66);cloud(c,52,12,.9);c.fillStyle="#9be15d";c.fillRect(0,66,100,34);place(c,"house",50,56,54);place(c,"tree",86,58,34);place(c,"kite",20,22,26);place(c,"sun",86,14,20);place(c,"flower",18,86,18);place(c,"puppy",70,86,20)}},
+  {id:"sea",name:"Under the sea",draw(c){sky(c,"#6fd3ff","#1f74c4",100);c.fillStyle="#ffe0a3";c.beginPath();c.moveTo(0,86);c.quadraticCurveTo(50,76,100,88);c.lineTo(100,100);c.lineTo(0,100);c.fill();
+    for(const x of [12,30,82])for(let i=0;i<3;i++){c.beginPath();c.moveTo(x+i*3,90);c.bezierCurveTo(x-4+i*3,78,x+6+i*3,70,x+i*3,58+i*4);c.strokeStyle="#2fa84a";c.lineWidth=2.4;c.stroke()}
+    place(c,"fish",56,30,34);place(c,"fish",28,56,26,true);place(c,"fish",72,62,22);place(c,"star",52,86,16);for(const[x,y,r]of[[40,18,2],[44,10,1.4],[86,40,2.4],[18,30,1.6]])circ(c,x,y,r,null,"rgba(255,255,255,.8)",.8)}},
+  {id:"party",name:"Party time",draw(c){c.fillStyle="#fff0f6";c.fillRect(0,0,100,100);for(let i=0;i<10;i++)K.poly(c,[[i*10,0],[i*10+10,0],[i*10+5,8]],["#ff5a5f","#ffd23f","#4cc9f0","#9be15d"][i%4]);c.fillStyle="#ffd6e6";c.fillRect(0,80,100,20);
+    place(c,"balloon",18,34,30);place(c,"balloon",84,30,30);place(c,"cupcake",52,62,44);place(c,"icecream",20,74,28);place(c,"star",82,74,20);place(c,"crown",56,20,24)}},
+  {id:"road",name:"Road trip",draw(c){sky(c,"#a8e0ff","#e6f7ff",64);cloud(c,20,14,.8);cloud(c,60,22,.7);ell(c,30,64,40,14,"#9be15d");ell(c,80,66,36,12,"#86d14a");c.fillStyle="#9be15d";c.fillRect(0,64,100,36);c.fillStyle="#6b6680";c.fillRect(0,72,100,18);for(let x=4;x<100;x+=16)c.fillRect(x,80,8,2.2),c.fillStyle="#fff",c.fillRect(x,80,8,2.2),c.fillStyle="#6b6680";
+    place(c,"sun",86,14,20);place(c,"tree",12,54,30);place(c,"bus",70,70,40);place(c,"car",30,76,34)}}];
+let size=K.store.get("kp_size",4),done=K.store.get("kp_done",{}),si=0,run=0,sayText="",B=0,full=null,pieces=[],placed=0;
+const dpr=Math.min(window.devicePixelRatio||1,2.5);
+const GRID={4:[2,2],6:[3,2],9:[3,3]};
+function sizes(){[4,6,9].forEach(n=>$("#sz"+n).setAttribute("aria-pressed",String(size===n)))}
+[4,6,9].forEach(n=>$("#sz"+n).onclick=()=>{size=n;K.store.set("kp_size",n);sizes();K.sfx.tap()});
+function picker(){
+  run++;K.hush();$("#game").hidden=true;$("#picker").hidden=false;$("#overlay").innerHTML="";sizes();
+  const g=$("#pgrid");g.innerHTML="";
+  SCENES.forEach((s,i)=>{const b=document.createElement("button");b.className="pc";b.id="pc_"+s.id;b.append(K.canvas(c=>s.draw(c),150));
+    b.insertAdjacentHTML("beforeend",`<b>${s.name}</b><i>${done[s.id]?"★ done with "+done[s.id]+" pieces":""}</i>`);b.onclick=()=>{K.actx();play(i)};g.append(b)});
+}
+$("#bBack").onclick=picker;
+function say(t){sayText=t;$("#say").textContent=t;K.speak(t)}
+$("#bHear").onclick=()=>K.speak(sayText);
+function play(i){
+  si=i;run++;placed=0;const S=SCENES[i];$("#picker").hidden=true;$("#game").hidden=false;$("#overlay").innerHTML="";
+  $("#lbl").textContent=S.name+" · "+size+" pieces";say(`Build the ${S.name.toLowerCase()}!`);
+  requestAnimationFrame(()=>build(S));
+}
+function build(S){
+  const a=$("#area").getBoundingClientRect();B=Math.floor(Math.min(a.width,a.height*.58,440));
+  const [cols,rows]=GRID[size],pw=B/cols,ph=B/rows;
+  full=document.createElement("canvas");full.width=full.height=Math.round(B*dpr);const fc=full.getContext("2d");fc.setTransform(B*dpr/100,0,0,B*dpr/100,0,0);S.draw(fc);
+  const bc=$("#bc");bc.width=bc.height=Math.round(B*dpr);bc.style.width=bc.style.height=B+"px";$("#board").style.width=$("#board").style.height=B+"px";
+  pieces=[];for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)pieces.push({c,r,x:c*pw,y:r*ph,w:pw,h:ph,done:false});
+  drawBoard();
+  const tray=$("#tray");tray.innerHTML="";const tScale=Math.min(.72,(a.height-B-30)/(ph+8)*.95,1);
+  K.shuffle(pieces).forEach((p,k)=>{
+    const mk=sc=>{const cv=document.createElement("canvas");cv.width=Math.round(p.w*dpr);cv.height=Math.round(p.h*dpr);cv.style.width=p.w*sc+"px";cv.style.height=p.h*sc+"px";const x=cv.getContext("2d");
+      x.drawImage(full,p.x*dpr,p.y*dpr,p.w*dpr,p.h*dpr,0,0,cv.width,cv.height);x.strokeStyle="rgba(255,255,255,.95)";x.lineWidth=3*dpr;x.strokeRect(0,0,cv.width,cv.height);return cv};
+    const b=document.createElement("button");b.className="piece";b.id="piece"+k;b.setAttribute("aria-label","Puzzle piece");b.append(mk(Math.max(.4,tScale)));
+    K.drag(b,{start:()=>!p.done,make:()=>mk(1),
+      drop:(x,y)=>{const br=$("#bc").getBoundingClientRect(),lx=x-br.left,ly=y-br.top;if(lx<-20||ly<-20||lx>B+20||ly>B+20)return false;
+        if(Math.hypot(lx-(p.x+p.w/2),ly-(p.y+p.h/2))<Math.min(p.w,p.h)*.42){p.done=true;b.remove();placed++;drawBoard();K.sfx.ding();if(placed===pieces.length)complete();return true}
+        K.sfx.oops();return false},miss:()=>{}});
+    tray.append(b)});
+}
+function drawBoard(){
+  const c=$("#bc").getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,B,B);
+  c.globalAlpha=.22;c.drawImage(full,0,0,B,B);c.globalAlpha=1;
+  c.strokeStyle="rgba(43,37,64,.25)";c.setLineDash([5,5]);c.lineWidth=1.5;for(const p of pieces)c.strokeRect(p.x+1,p.y+1,p.w-2,p.h-2);c.setLineDash([]);
+  for(const p of pieces)if(p.done)c.drawImage(full,p.x*dpr,p.y*dpr,p.w*dpr,p.h*dpr,p.x,p.y,p.w,p.h);
+}
+function complete(){
+  const S=SCENES[si],my=run;done[S.id]=Math.max(done[S.id]||0,size);K.store.set("kp_done",done);K.sfx.yay();K.confetti(60);K.speak(`You made the ${S.name.toLowerCase()}!`);
+  if(size<9&&K.store.get("kp_wins",0)+1>=3){}
+  K.store.set("kp_wins",K.store.get("kp_wins",0)+1);
+  setTimeout(()=>{if(my!==run)return;const last=si>=SCENES.length-1;
+    $("#overlay").innerHTML=`<div class="done" style="--doneBg:#ff9f1c"><h1>PUZZLE DONE!</h1><div class="big" id="bigArt"></div><p>${S.name}<small>${size} pieces</small></p><div class="stars">★★★</div><div class="btns"><button class="pill a" id="dAgain">Again</button><button class="pill b" id="dNext">${last?"All puzzles":"Next puzzle"}</button>${size<9?'<button class="pill c" id="dHard">More pieces</button>':""}</div></div>`;
+    $("#bigArt").append(K.canvas(c=>S.draw(c),200));
+    $("#dAgain").onclick=()=>play(si);$("#dNext").onclick=()=>{if(last)picker();else play(si+1)};
+    if($("#dHard"))$("#dHard").onclick=()=>{size=size===4?6:9;K.store.set("kp_size",size);play(si)};
+  },900);
+}
+picker();
+window.__kp={play,solve:()=>{pieces.forEach(p=>p.done=true);placed=pieces.length;drawBoard();complete()}};
+K.sw();
+})();
+</script>
+</body>
+</html>
