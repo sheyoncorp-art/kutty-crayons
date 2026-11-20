@@ -109,12 +109,12 @@ const GAMES={
   feed(){
     const f=K.pick(FRIENDS),n=rn();let got=0;
     const wrap=document.createElement("div");wrap.className="feed";
-    const fr=document.createElement("div");fr.className="friend";const draw=h=>K.canvas(c=>{K.animal(c,f.a,50,f.a==="bunny"?60:52,1.55,h,0,false)},150);
+    const fr=document.createElement("div");fr.className="friend";fr.tabIndex=0;fr.setAttribute("aria-label",f.name);const draw=h=>K.canvas(c=>{K.animal(c,f.a,50,f.a==="bunny"?60:52,1.55,h,0,false)},150);
     let face=draw(false);fr.append(face);const goal=document.createElement("div");goal.className="goal";goal.textContent=n;fr.append(goal);
     const plate=document.createElement("div");plate.className="plate";plate.id="plate";
     const bk=document.createElement("div");bk.className="basketRow";
     for(let i=0;i<10;i++){const b=document.createElement("button");b.className="food";b.id="food"+i;b.setAttribute("aria-label",K.label(f.food));b.append(K.art(f.food,58));
-      K.drag(b,{start:()=>!b.dataset.done&&got<n,make:()=>K.art(f.food,72),
+      K.drag(b,{targets:()=>[fr],start:()=>!b.dataset.done&&got<n,make:()=>K.art(f.food,72),
         drop:(x,y)=>{if(!(K.hit(fr,x,y,20)||K.hit(plate,x,y,20))||got>=n)return false;b.dataset.done=1;b.style.visibility="hidden";got++;
           plate.querySelector("span")?.remove();plate.append(K.art(f.food,40));const s=document.createElement("span");s.textContent=got;plate.append(s);K.sfx.count(got);K.sayNumber(got);
           if(got===n){const h=draw(true);fr.replaceChild(h,face);face=h;setTimeout(()=>K.speak([{t:`Yummy! ${n} ${plural(f.food)}. Thank you!`}]),900);win(2600)}return true},
@@ -125,16 +125,18 @@ const GAMES={
   trace(){
     const n=rn(),tr=new K.Trace(String(n)),col=K.pick(COLS);let done=false,down=false,last=null;
     const r=area.getBoundingClientRect(),S=Math.floor(Math.min(r.width,r.height-10,420)),d=Math.min(window.devicePixelRatio||1,2.5);
-    const cv=document.createElement("canvas");cv.id="tc";cv.width=cv.height=Math.round(S*d);cv.style.width=cv.style.height=S+"px";const c=cv.getContext("2d");area.append(cv);
+    const cv=document.createElement("canvas");cv.id="tc";cv.tabIndex=0;cv.dataset.tvfirst="1";cv.setAttribute("aria-label","Trace the number "+n);cv.width=cv.height=Math.round(S*d);cv.style.width=cv.style.height=S+"px";const c=cv.getContext("2d");area.append(cv);
     const my=run;let stars=[];
     const draw=t=>{if(my!==run)return;c.setTransform(S*d/100,0,0,S*d/100,0,0);c.clearRect(0,0,100,100);tr.draw(c,col,done,t);
       stars.forEach((s,i)=>{const k=Math.min(1,(t-s.t)*3);K.star5(c,s.x,s.y,5*k,2.2*k,"#ffd23f","#e0a800",.6)});requestAnimationFrame(x=>draw(x/1000))};requestAnimationFrame(x=>draw(x/1000));
     const toU=e=>{const b=cv.getBoundingClientRect();return[(e.clientX-b.left)/b.width*100,(e.clientY-b.top)/b.height*100]};
     cv.onpointerdown=e=>{if(done)return;K.actx();down=true;last=toU(e);tr.strokes.push([last]);tr.add(last,last);try{cv.setPointerCapture(e.pointerId)}catch(_){}};
     cv.onpointermove=e=>{if(!down||done)return;const p=toU(e);tr.strokes[tr.strokes.length-1].push(p);if(tr.add(last,p)&&Math.random()<.3)K.sfx.tap();last=p;
-      if(tr.progress()>=.72){done=true;down=false;K.sfx.ding();const now=performance.now()/1000;
+      check()};
+    const check=()=>{if(!done&&tr.progress()>=.72){done=true;down=false;K.sfx.ding();const now=performance.now()/1000;
         for(let i=0;i<n;i++){const a=-Math.PI/2+i*Math.PI*2/n;stars.push({x:50+Math.cos(a)*44,y:50+Math.sin(a)*44,t:now+i*.25})}
         setTimeout(()=>{if(my===run)K.speak([{t:K.EN_NUM[n]+"!"},{t:K.TA_NUM[n][0],ta:K.TA_NUM[n][1]}])},300);win(2400)}};
+    K.onOK(cv,()=>{if(done)return;K.actx();tr.auto(10);K.sfx.tap();check()});
     cv.onpointerup=cv.onpointercancel=()=>{down=false};
     say(`Trace the number ${n}`,[{t:`Trace the number ${K.EN_NUM[n]}`}]);
   },

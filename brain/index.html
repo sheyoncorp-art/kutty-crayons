@@ -127,9 +127,9 @@ const GAMES={
     const ts=Math.min(120,tileSize(n,3));
     const top=document.createElement("div");top.className="row";const bot=document.createElement("div");bot.className="row";
     let got=0;const slots=[];
-    K.shuffle(items).forEach(name=>{const s=document.createElement("div");s.className="tile shadow";s.style.setProperty("--ts",ts+"px");s.dataset.n=name;s.append(K.art(name,ts*.8,{shadow:true}));bot.append(s);slots.push(s)});
+    K.shuffle(items).forEach(name=>{const s=document.createElement("div");s.className="tile shadow";s.tabIndex=0;s.setAttribute("aria-label","Shadow");s.style.setProperty("--ts",ts+"px");s.dataset.n=name;s.append(K.art(name,ts*.8,{shadow:true}));bot.append(s);slots.push(s)});
     items.forEach((name,i)=>{const t=artTile(name,ts);t.id="src"+i;
-      K.drag(t,{start:()=>!t.dataset.done,make:()=>K.art(name,ts),
+      K.drag(t,{targets:()=>slots.filter(x=>!x.dataset.done),start:()=>!t.dataset.done,make:()=>K.art(name,ts),
         drop:(x,y)=>{const s=slots.find(s=>!s.dataset.done&&K.hit(s,x,y,14));if(!s)return false;if(s.dataset.n!==name){miss(s);return false}
           s.dataset.done=1;t.dataset.done=1;s.classList.add("got");s.innerHTML="";s.append(K.art(name,ts*.8));t.style.visibility="hidden";K.sfx.ding();K.speak(K.label(name));got++;if(got===n)setTimeout(win,400);return true},
         miss:()=>K.sfx.oops()});top.append(t)});
@@ -160,10 +160,10 @@ const GAMES={
     const ts=Math.min(96,tileSize(items.length>4?3:4,4));
     const top=document.createElement("div");top.className="row";
     const bs=document.createElement("div");bs.className="baskets";
-    const mk=(o,k)=>{const b=document.createElement("div");b.className="basket";b.id="basket"+k;b.style.setProperty("--bk",o.bk);b.innerHTML='<div class="hd"></div><div class="in"></div>';b.querySelector(".hd").append(K.art(o.i,40,{scale:o.s||1}),document.createTextNode(o.t));bs.append(b);return b};
+    const mk=(o,k)=>{const b=document.createElement("div");b.className="basket";b.id="basket"+k;b.tabIndex=0;b.setAttribute("aria-label",o.t+" basket");b.style.setProperty("--bk",o.bk);b.innerHTML='<div class="hd"></div><div class="in"></div>';b.querySelector(".hd").append(K.art(o.i,40,{scale:o.s||1}),document.createTextNode(o.t));bs.append(b);return b};
     const bA=mk(A,0),bB=mk(B,1);let got=0;
     items.forEach((it,i)=>{const t=artTile(it.n,ts);t.id="item"+i;if(it.s){t.firstChild.style.transform=`scale(${it.s})`}
-      K.drag(t,{start:()=>!t.dataset.done,make:()=>K.art(it.n,ts*(it.s||1)),
+      K.drag(t,{targets:()=>[bA,bB],start:()=>!t.dataset.done,make:()=>K.art(it.n,ts*(it.s||1)),
         drop:(x,y)=>{const into=K.hit(bA,x,y,10)?0:K.hit(bB,x,y,10)?1:-1;if(into<0)return false;if(into!==it.k){miss(into?bB:bA);return false}
           t.dataset.done=1;t.style.visibility="hidden";(into?bB:bA).querySelector(".in").append(K.art(it.n,40,{scale:it.s||1}));K.sfx.ding();got++;if(got===items.length)setTimeout(win,300);return true},
         miss:()=>K.sfx.oops()});top.append(t)});

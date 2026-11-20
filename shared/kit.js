@@ -165,6 +165,7 @@ K.shake=el=>{el.classList.remove("shake");void el.offsetWidth;el.classList.add("
    K.drag(el,{make:()=>canvas, offset:true, drop:(x,y)=>bool, start:()=>bool}) */
 K.drag=function(el,o){
   el.style.touchAction="none";
+  el.addEventListener("click",e=>{if(e.detail!==0)return;if(o.start&&o.start()===false)return;K.actx();K.startCarry(el,o)});
   el.addEventListener("pointerdown",e=>{
     if(o.start&&o.start()===false)return;e.preventDefault();K.actx();
     const pid=e.pointerId,touch=e.pointerType==="touch",g=o.make();g.classList.add("ghost");document.body.append(g);
@@ -217,6 +218,53 @@ K.Trace.prototype.draw=function(c,col,done,t){
 K.TA_NUM=[null,["ஒன்று","ondru"],["இரண்டு","irandu"],["மூன்று","moondru"],["நான்கு","naangu"],["ஐந்து","ainthu"],["ஆறு","aaru"],["ஏழு","ezhu"],["எட்டு","ettu"],["ஒன்பது","onbathu"],["பத்து","pathu"]];
 K.EN_NUM=["zero","one","two","three","four","five","six","seven","eight","nine","ten"];
 K.sayNumber=n=>K.speak([{t:K.EN_NUM[n]},{t:K.TA_NUM[n][0],ta:K.TA_NUM[n][1]}]);
+
+
+/* ---------- auto-trace for TV remote ---------- */
+K.Trace.prototype.auto=function(steps){const P=this.pts,C=this.cov;let p=this._p,cur=this._s;
+  for(let s=0;s<steps;s++){let bj=-1,bd=1e9;const ref=p||this.start;for(let j=0;j<C.length;j++)if(!C[j]){const dx=P[j*2]-ref[0],dy=P[j*2+1]-ref[1],d=dx*dx+dy*dy;if(d<bd){bd=d;bj=j}}
+    if(bj<0)break;const q=[P[bj*2],P[bj*2+1]];if(!p||bd>100){cur=[q];this.strokes.push(cur);this.add(q,q)}else{cur.push(q);this.add(p,q)}p=q}
+  this._p=p;this._s=cur;return this.progress()};
+
+/* ---------- TV remote: arrow-key focus, OK to press, Back to go back ---------- */
+K.tv=false;K.carry=null;
+(function(){const st=document.createElement("style");st.textContent=':focus-visible{outline:4px solid #2b2540!important;outline-offset:3px!important;box-shadow:0 0 0 9px rgba(255,209,102,.95)!important}.carrying{outline:4px dashed #ff6b5a!important;outline-offset:5px!important}.tvhint{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);transform:translateX(-50%);background:#2b2540;color:#fff;font:700 15px/1.2 "Baloo Thambi 2",system-ui,sans-serif;padding:8px 16px;border-radius:999px;z-index:90;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis}.tvhint.on{opacity:.94}';(document.head||document.documentElement).append(st)})();
+let hintEl=null;
+K.tvHint=function(t,ms){if(!hintEl){hintEl=document.createElement("div");hintEl.className="tvhint";document.body.append(hintEl)}hintEl.textContent=t;hintEl.classList.add("on");clearTimeout(K.tvHint.t);K.tvHint.t=setTimeout(()=>hintEl.classList.remove("on"),ms||2600)};
+function visible(el){if(!el||!el.isConnected||el.closest("[hidden]"))return false;const r=el.getBoundingClientRect();if(r.width<2||r.height<2)return false;const cs=getComputedStyle(el);if(cs.visibility==="hidden"||cs.display==="none"||+cs.opacity===0)return false;return r.bottom>-2&&r.top<innerHeight+2&&r.right>0&&r.left<innerWidth}
+K.visible=visible;
+function scope(){const ov=[...document.querySelectorAll(".done,.sheet")].filter(visible).pop();return ov||document}
+K.focusables=()=>[...scope().querySelectorAll('button:not([disabled]),a[href],[tabindex="0"]')].filter(visible);
+const center=el=>{const r=el.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2]};
+let lastPos=null;
+K.focus=function(el){if(!el)return;try{el.focus({preventScroll:true})}catch(e){el.focus()}try{el.scrollIntoView({block:"nearest",inline:"nearest"})}catch(e){}lastPos=center(el)};
+K.FIRST='[data-tvfirst],#bGo,.go,.knob,.tile.drag,.opts .tile,.odd .tile,.mcard:not(.open),.num,.frame,.food,.piece,.lt,.pc,.dish,a.game';
+K.focusFirst=function(){const f=K.focusables();if(!f.length)return;let el=f.find(e=>e.matches(K.FIRST));if(!el&&lastPos){let bd=1e9;for(const e of f){const c=center(e),d=Math.hypot(c[0]-lastPos[0],c[1]-lastPos[1]);if(d<bd){bd=d;el=e}}}K.focus(el||f[0])};
+function move(dir){const cur=document.activeElement,f=K.focusables();if(!cur||cur===document.body||!f.includes(cur)){K.focusFirst();return}
+  const[cx,cy]=center(cur);let best=null;
+  for(const el of f){if(el===cur)continue;const[x,y]=center(el),dx=x-cx,dy=y-cy;let p,q;
+    if(dir==="right"){p=dx;q=dy}else if(dir==="left"){p=-dx;q=dy}else if(dir==="down"){p=dy;q=dx}else{p=-dy;q=dx}
+    if(p<=4)continue;const sc=p+Math.abs(q)*2.2;if(!best||sc<best.s)best={el,s:sc}}
+  if(best)K.focus(best.el)}
+K.startCarry=function(el,o){if(K.carry)K.endCarry();K.carry={el,o};el.classList.add("carrying");K.sfx.pop();K.tvHint("Now pick where it goes and press OK");const ts=o.targets?o.targets():[];if(ts[0])K.focus(ts[0])};
+K.endCarry=function(placed){if(!K.carry)return;const el=K.carry.el;el.classList.remove("carrying");K.carry=null;
+  if(placed){const sib=el.parentNode&&[...el.parentNode.children].find(x=>x!==el&&x.tagName==="BUTTON"&&visible(x));if(sib)K.focus(sib);else setTimeout(K.focusFirst,60)}else if(visible(el))K.focus(el)};
+K.back=function(){const sh=document.querySelector(".sheet");if(sh&&visible(sh)){sh.parentNode.innerHTML="";return}
+  const bb=document.getElementById("bBack");if(bb&&visible(bb)){bb.click();return}
+  const h=[...document.querySelectorAll('a[href="../"]')].find(visible)||document.querySelector('a[href="../"]');if(h)location.href=h.href};
+const BACK=[27,4,10009,461,166];
+document.addEventListener("keydown",e=>{
+  const k=e.key,kc=e.keyCode,dir={ArrowRight:"right",ArrowLeft:"left",ArrowUp:"up",ArrowDown:"down"}[k]||{39:"right",37:"left",38:"up",40:"down"}[kc];
+  if(dir){if(!K.tv){K.tv=true;K.tvHint("Arrows to move · OK to play · Back to go back",3500)}e.preventDefault();move(dir);return}
+  const ok=k==="Enter"||kc===13||kc===23||k===" ";
+  if(ok&&K.carry){e.preventDefault();e.stopPropagation();const a=document.activeElement,C=K.carry;if(a===C.el){K.endCarry();return}
+    const t=(C.o.targets?C.o.targets():[]).find(x=>x===a||x.contains(a));
+    if(t){const[x,y]=center(t);if(C.o.drop(x,y))K.endCarry(true);else C.o.miss&&C.o.miss()}else K.tvHint("Pick a place for it, then press OK");return}
+  if(ok&&kc===23&&document.activeElement&&document.activeElement!==document.body){e.preventDefault();document.activeElement.click();return}
+  if(BACK.includes(kc)||k==="Escape"||k==="GoBack"||k==="BrowserBack"||(k==="Backspace"&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName))){e.preventDefault();if(K.carry){K.endCarry();return}K.back()}
+},true);
+setInterval(()=>{if(K.tv&&!K.carry){const a=document.activeElement;if(!a||a===document.body||!visible(a))K.focusFirst()}},450);
+K.onOK=function(el,fn){el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.keyCode===13||e.keyCode===23||e.key===" "){e.preventDefault();fn()}})};
 
 K.sw=function(){if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("../sw.js",{scope:"../"}).catch(()=>{}))};
 window.Kit=K;

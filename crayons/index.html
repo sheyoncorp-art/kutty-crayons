@@ -131,7 +131,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
     </div>
   </header>
 
-  <div id="stage">
+  <div id="stage" tabindex="0" data-tvfirst="1" aria-label="Drawing board">
     <div id="board"><canvas id="paint"></canvas><canvas id="lines"></canvas><canvas id="trace"></canvas></div>
   </div>
 
@@ -150,6 +150,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 <div class="toast" id="toast"></div>
 <div id="overlay"></div>
 
+<script src="../shared/kit.js"></script>
 <script>
 (function(){
 const $=s=>document.querySelector(s);
@@ -364,6 +365,16 @@ function placeMarkerIdle(){
   if(mode==="trace"&&dots.length){marker.hidden=false;const d=dots.find(q=>!q.hit)||dots[0];placeMarker(r.left+toPx(d.x),r.top+toPx(d.y)+8,true);return}
   if(mode==="color"&&samples.length){let mx=0,my=0;const n=samples.length/2;for(let i=0;i<n;i++){mx+=samples[i*2];my+=samples[i*2+1]}marker.hidden=false;placeMarker(r.left+toPx(mx/n),r.top+toPx(my/n),true);return}
   marker.hidden=true}
+
+/* TV remote: OK on the drawing board traces or colours a bit */
+function remoteAct(){
+  if(mode==="trace"){const nx=dots.filter(d=>!d.hit).slice(0,6);if(!nx.length)return;const st=nx.map(d=>[d.x,d.y]);strokes.push(st);for(const p of st)markHits(p[0],p[1]);blip(hitFrac());renderTrace();if(hitFrac()>=.88){partDone();waitUp=false}}
+  else if(mode==="color"){for(let k=0;k<5;k++){const j=covered.indexOf(0);if(j<0)break;let bj=-1,bd=1e9;for(let i=0;i<covered.length;i++)if(!covered[i]&&i!==j){const dx=samples[i*2]-samples[j*2],dy=samples[i*2+1]-samples[j*2+1],d=dx*dx+dy*dy;if(d>30&&d<bd){bd=d;bj=i}}
+      const a=[toPx(samples[j*2]),toPx(samples[j*2+1])],b=bj<0?a:[toPx(samples[bj*2]),toPx(samples[bj*2+1])];scrub(a,b)}}
+  else if(mode==="pick"){const o=document.querySelector(".opts .opt");if(o)Kit.focus(o);toast("Pick a colour first","Use the arrows, then OK")}
+  else if(mode==="doodle"){pushUndo();stamp(S*(.12+Math.random()*.76),S*(.12+Math.random()*.76),color);tone(880,.08,"square",.05)}
+}
+Kit.onOK(stage,remoteAct);
 stage.addEventListener("pointerdown",e=>{
   ptype=e.pointerType||"mouse";down=true;waitUp=false;try{stage.setPointerCapture(e.pointerId)}catch(_){}
   const t=tipOf(e),p=local(t);

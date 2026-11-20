@@ -47,7 +47,7 @@
     <button class="stk" id="bSound" style="--c:var(--sun)"></button>
   </header>
   <div id="stage">
-    <canvas id="tc"></canvas>
+    <canvas id="tc" tabindex="0" data-tvfirst="1" aria-label="Trace the letter"></canvas>
     <div class="reveal" id="reveal"></div>
     <div class="nav"><button class="stk" id="bPrev" style="--c:#fff" aria-label="Previous letter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <button class="stk" id="bRedo" style="--c:#fff" aria-label="Trace again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/></svg></button>
@@ -90,7 +90,7 @@ function open(i){
   $("#say").textContent=tab==="en"?`Trace the letter ${L[0]}`:`Trace ${L[0]}`;sayParts=intro(L);K.speak(sayParts);
   $("#reveal").className="reveal";$("#reveal").innerHTML='<span class="wait">Trace the letter to see the picture</span>';
   $("#bNext").classList.remove("ready");$("#bPrev").style.visibility=i>0?"visible":"hidden";
-  layout();tr=new K.Trace(L[0]);
+  layout();tr=new K.Trace(L[0]);if(K.tv)setTimeout(()=>K.focus(cv),50);
   const my=run;const loop=t=>{if(my!==run)return;draw(t/1000);requestAnimationFrame(loop)};requestAnimationFrame(loop);
 }
 function draw(t){if(!S||!tr)return;ctx.setTransform(S*dpr/100,0,0,S*dpr/100,0,0);ctx.clearRect(0,0,100,100);tr.draw(ctx,col,ok,t)}
@@ -99,6 +99,7 @@ new ResizeObserver(()=>{if(!$("#game").hidden)layout()}).observe($("#stage"));
 const toU=e=>{const b=cv.getBoundingClientRect();return[(e.clientX-b.left)/b.width*100,(e.clientY-b.top)/b.height*100]};
 cv.addEventListener("pointerdown",e=>{if(ok||!tr)return;K.actx();down=true;last=toU(e);tr.strokes.push([last]);tr.add(last,last);try{cv.setPointerCapture(e.pointerId)}catch(_){}});
 cv.addEventListener("pointermove",e=>{if(!down||ok)return;const p=toU(e);tr.strokes[tr.strokes.length-1].push(p);if(tr.add(last,p)&&Math.random()<.25)K.sfx.tap();last=p;if(tr.progress()>=.74)finish()});
+K.onOK(cv,()=>{if(ok||!tr)return;K.actx();tr.auto(10);K.sfx.tap();if(tr.progress()>=.74)finish()});
 const up=()=>{if(down&&!ok&&tr&&tr.off>tr.on*1.2&&tr.off>40){K.toast("Stay on the letter!");tr.off=0;tr.on=0}down=false};
 cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
 function finish(){
@@ -107,7 +108,7 @@ function finish(){
   const rv=$("#reveal");rv.innerHTML="";rv.append(K.art(L[1],84));const d=document.createElement("div");
   d.innerHTML=tab==="en"?`<b>${L[0]}${L[0].toLowerCase()} · ${word(L)}</b><small>${L[0]} for ${word(L)}</small>`:`<b>${L[0]} · ${L[2]}</b><small>${L[0]} for ${L[3]}</small>`;
   rv.append(d);rv.classList.add("on");$("#say").textContent=tab==="en"?`${L[0]} for ${word(L)}!`:`${L[0]} - ${L[2]}`;sayParts=outro(L);K.speak(sayParts);
-  $("#bNext").classList.add("ready");
+  $("#bNext").classList.add("ready");if(K.tv)K.focus($("#bNext"));
   if(Object.keys(done[tab]).length===list().length&&!K.store.get("kl_cheer_"+tab,0)){K.store.set("kl_cheer_"+tab,1);setTimeout(allDone,2600)}
 }
 function allDone(){K.confetti(70);K.speak(tab==="en"?"Wow! You traced all the letters!":"Super! All Tamil letters done!");
