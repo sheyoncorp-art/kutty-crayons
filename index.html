@@ -91,6 +91,10 @@ a.game:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
       <div class="art" data-art="flight"></div>
       <div class="info"><div><b>Kutty Flight</b><small>Be the air hostess, serve the passengers · விமான விளையாட்டு</small></div></div>
     </a>
+    <a class="game" href="chop/" style="--bg:#3b2a78;--btn:#ff6b5a"><span class="new">NEW</span>
+      <div class="art" data-art="chop"></div>
+      <div class="info"><div><b>Chop Chop</b><small>Slice the fruits, dodge the bombs · பழம் வெட்டு</small></div></div>
+    </a>
   </div>
   <p class="foot">Tip: tap ⋮ → Add to Home screen to keep these games on the phone.</p>
 </main>
@@ -104,6 +108,7 @@ const ART={
  numbers(c){T(c,"1",22,40,34,"#ff5a5f");T(c,"2",50,40,34,"#ffb000");T(c,"3",78,40,34,"#2ec27e");for(let i=0;i<3;i++)at(c,"mango",30+i*20,74,20)},
  letters(c){T(c,"A",28,42,40,"#3a9df0");T(c,"அ",68,42,40,"#ff7ac6");at(c,"apple",28,76,22);at(c,"pineapple",68,76,22)},
  flight(c){at(c,"plane",50,30,52);at(c,"juice",28,72,26);at(c,"sandwich",52,74,26);at(c,"cupcake",76,72,26)},
+ chop(c){c.fillStyle="#3b2a78";c.fillRect(0,0,100,100);at(c,"watermelon",30,46,40);at(c,"banana",70,40,34);c.save();c.strokeStyle="#fff";c.lineWidth=3;c.lineCap="round";c.beginPath();c.moveTo(12,80);c.lineTo(88,20);c.stroke();c.restore();K.circ(c,76,74,9,"#1d1730");c.fillStyle="#ffd23f";K.circ(c,82,63,3,"#ffd23f")},
  puzzle(c){const s=["sun","tree","car","house"];s.forEach((n,i)=>{const x=30+(i%2)*40,y=30+Math.floor(i/2)*40,o=i===3?4:0;rrect(c,x-19+o,y-19+o,38,38,4);fs(c,"#fff","rgba(43,37,64,.25)",1);at(c,n,x+o,y+o,30)})}};
 document.querySelectorAll("[data-art]").forEach(el=>{const r=el.getBoundingClientRect();const w=r.width||200,h=w*10/16;const cv=K.canvas(c=>{c.save();c.translate(50,50);c.scale(1,1);c.translate(-50,-50);ART[el.dataset.art](c);c.restore()},h);cv.style.width="auto";cv.style.height="100%";el.append(cv)});
 })();

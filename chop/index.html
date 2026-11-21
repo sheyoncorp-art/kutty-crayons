@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Chop Chop</title>
+<meta name="theme-color" content="#2a2160">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+/* Night-sky arcade look on purpose: single dark theme. */
+body{background:#2a2160}
+.bar{display:flex;align-items:center;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:5;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .sp{flex:1}
+#cv{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.menu{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.08),transparent 60%)}
+.menu h1{margin:0;font-size:clamp(48px,14vw,84px);font-weight:800;line-height:.9;color:#ffe066;-webkit-text-stroke:3px #2b2540;paint-order:stroke fill;text-shadow:0 6px 0 #ff6b5a;transform:rotate(-4deg)}
+.menu p{margin:0;color:#e6defa;font-weight:700;font-size:17px}
+.menu .best{color:#ffe066;font-size:20px}
+.menu .art{display:flex;gap:4px}
+.toggle{border:3px solid #fff;background:rgba(255,255,255,.12);color:#fff;font:800 16px/1 var(--font);border-radius:999px;padding:10px 18px;cursor:pointer}
+.toggle[aria-pressed="false"]{opacity:.7}
+.menu .pill{font-size:22px;padding:14px 30px}
+.menu h2{margin:0;font-size:44px;color:#fff;font-weight:800}
+.menu .score{font-size:64px;font-weight:800;color:#ffe066;line-height:1}
+</style>
+</head>
+<body>
+<canvas id="cv" tabindex="0" aria-label="Game area"></canvas>
+<div class="bar"><a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="bHome"></a><span class="sp"></span><button class="stk" id="bSound" style="--c:var(--sun)"></button></div>
+<div id="menu"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$,{circ,ell,rrect,fs,seg}=K,PI=Math.PI,TAU=PI*2;
+$("#bHome").innerHTML=K.HOME;K.soundButton($("#bSound"));
+const cv=$("#cv"),ctx=cv.getContext("2d"),dpr=Math.min(window.devicePixelRatio||1,2);
+const FRUITS=["apple","banana","mango","orange","strawberry","watermelon","pineapple","lemon","grapes","cherry"];
+const JUICE={apple:"#ff4d4d",banana:"#ffe36b",mango:"#ffb21f",orange:"#ff9f1c",strawberry:"#ff3b4e",watermelon:"#ff5a6e",pineapple:"#ffd23f",lemon:"#fff07a",grapes:"#9be15d",cherry:"#d91e36"};
+let Wpx=0,Hpx=0,u=1,H=100,state="menu",objs=[],halves=[],parts=[],splats=[],trail=[],score=0,best=K.store.get("cc_best",0),strikes=0,t0=0,nextWave=0,down=false,last=null,swipeCuts=0,shake=0,flash=0,run=0,popups=[];
+let bombs=K.store.get("cc_bombs",true);
+const G=140;
+
+function resize(){Wpx=innerWidth;Hpx=innerHeight;cv.width=Math.round(Wpx*dpr);cv.height=Math.round(Hpx*dpr);u=Wpx/100;H=Hpx/u}
+addEventListener("resize",resize);resize();
+
+/* ---------- sounds ---------- */
+function slash(){const a=K.actx();if(!a||!K.sound)return;K.sfx.whoosh()}
+function squish(){K.sfx.flip();K.sfx.tap()}
+function boom(){if(!K.sound)return;const a=K.actx();if(!a)return;try{const s=a.createBufferSource(),b=a.createBuffer(1,a.sampleRate,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);s.buffer=b;const f=a.createBiquadFilter();f.type="lowpass";f.frequency.value=420;const g=a.createGain();g.gain.value=.9;s.connect(f).connect(g).connect(a.destination);s.start()}catch(e){}}
+
+/* ---------- spawning ---------- */
+function toss(kind){
+  const x=12+Math.random()*76,peak=H*(.12+Math.random()*.25),vy=-Math.sqrt(2*G*(H+10-peak)),vx=(50-x)*(.25+Math.random()*.35);
+  objs.push({kind,x,y:H+10,vx,vy,rot:Math.random()*TAU,vr:(Math.random()-.5)*5,r:kind==="bomb"?7.5:8.5,born:performance.now()});
+}
+function wave(el){
+  const n=Math.min(6,1+Math.floor(el/12)+(Math.random()<.35?1:0));
+  const bombP=bombs&&el>6?Math.min(.28,.1+el/180):0;let bc=0;
+  for(let i=0;i<n;i++)setTimeout(()=>{if(state!=="play")return;const b=Math.random()<bombP&&bc<2&&n>1;if(b)bc++;toss(b?"bomb":K.pick(FRUITS));K.sfx.whoosh&&Math.random()<.4&&noiseSoft()},i*Math.max(120,380-el*4));
+  nextWave=performance.now()+Math.max(1100,2600-el*25);
+}
+function noiseSoft(){}
+
+/* ---------- game flow ---------- */
+function start(){K.actx();$("#menu").innerHTML="";state="play";objs=[];halves=[];parts=[];splats=[];popups=[];score=0;strikes=0;t0=performance.now();nextWave=t0+600;run++;K.speak("Chop the fruits! Don't touch the bombs!");setTimeout(()=>cv.focus(),50)}
+function gameOver(reason){
+  if(state!=="play")return;state="over";const my=run;
+  if(score>best){best=score;K.store.set("cc_best",best)}
+  setTimeout(()=>{if(my!==run)return;
+    $("#menu").innerHTML=`<div class="menu" role="dialog" aria-label="Game over"><h2>${reason==="bomb"?"BOOM!":"GAME OVER"}</h2><div class="score">${score}</div><p class="best">Best: ${best}</p><div class="btns"><button class="pill b" id="bAgain">Play again</button><a class="pill c" href="../" style="text-decoration:none">All games</a></div></div>`;
+    $("#bAgain").onclick=start;K.speak(reason==="bomb"?`Boom! You got ${score}!`:`Good try! You got ${score}!`);if(score>=best&&score>0)K.confetti(50)},reason==="bomb"?1100:600);
+}
+function menu(){
+  state="menu";
+  $("#menu").innerHTML=`<div class="menu"><div class="art" id="mArt"></div><h1>CHOP<br>CHOP!</h1><p>Swipe to slice the fruits. Don't hit the bombs!<br>Miss 3 fruits and the game ends.</p><p class="best">Best: ${best}</p>
+    <button class="toggle" id="bBomb" aria-pressed="${bombs}">${bombs?"💣 Bombs on":"Bombs off (easy)"}</button><button class="pill c go pulse" id="bGo">Play!</button></div>`;
+  ["watermelon","banana","apple"].forEach(n=>$("#mArt").append(K.art(n,70)));
+  $("#bBomb").onclick=()=>{bombs=!bombs;K.store.set("cc_bombs",bombs);menu()};$("#bGo").onclick=start;
+}
+
+/* ---------- slicing ---------- */
+function distSeg(px,py,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;let t=L?((px-a[0])*dx+(py-a[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-(a[0]+t*dx),py-(a[1]+t*dy))}
+function sliceSeg(a,b){
+  if(state!=="play")return;const len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<.6)return;const ang=Math.atan2(b[1]-a[1],b[0]-a[0]);
+  for(const o of objs){if(o.cut)continue;if(distSeg(o.x,o.y,a,b)<o.r){o.cut=true;
+    if(o.kind==="bomb"){explode(o);return}
+    cutFruit(o,ang)}}
+  objs=objs.filter(o=>!o.cut);
+}
+function cutFruit(o,ang){
+  score++;swipeCuts++;squish();const col=JUICE[o.kind];
+  for(const side of [-1,1]){const nx=-Math.sin(ang)*side,ny=Math.cos(ang)*side;halves.push({kind:o.kind,x:o.x,y:o.y,vx:o.vx*.4+nx*22,vy:Math.min(o.vy,0)*.3+ny*22-10,ang,spin:0,vs:side*(2+Math.random()*3),rot0:o.rot-ang,side,r:o.r,life:2.2})}
+  for(let i=0;i<14;i++){const a=Math.random()*TAU,s=10+Math.random()*30;parts.push({x:o.x,y:o.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-8,life:1,max:.5+Math.random()*.5,r:.7+Math.random()*1.3,col})}
+  splats.push({x:o.x,y:o.y,r:o.r*(1.2+Math.random()*.5),col,life:1,seed:Math.random()*1000});
+  if(splats.length>14)splats.shift();
+}
+function explode(o){
+  boom();shake=1;flash=1;for(let i=0;i<40;i++){const a=Math.random()*TAU,s=15+Math.random()*50;parts.push({x:o.x,y:o.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,max:.6+Math.random()*.6,r:1+Math.random()*2,col:i%2?"#ffd23f":"#ff6b2a"})}
+  o.dead=true;gameOver("bomb");
+}
+function endSwipe(){if(swipeCuts>=3){const bonus=swipeCuts;score+=bonus;popups.push({t:`COMBO ×${swipeCuts}  +${bonus}`,x:50,y:H*.4,life:1.4});K.sfx.yay()}else if(swipeCuts)K.sfx.ding();swipeCuts=0}
+const toU=e=>[e.clientX/u,e.clientY/u];
+cv.addEventListener("pointerdown",e=>{if(state!=="play")return;K.actx();down=true;last=toU(e);trail=[{p:last,t:performance.now()}];swipeCuts=0;try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener("pointermove",e=>{if(!down||state!=="play")return;const p=toU(e);trail.push({p,t:performance.now()});if(Math.hypot(p[0]-last[0],p[1]-last[1])>3&&Math.random()<.25)slash();sliceSeg(last,p);last=p});
+const up=()=>{if(down)endSwipe();down=false};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+/* TV remote: OK slices the highest fruit (never a bomb) */
+K.onOK(cv,()=>{if(state!=="play")return;const f=objs.filter(o=>o.kind!=="bomb"&&o.y<H-4).sort((a,b)=>a.y-b.y)[0];if(!f)return;const a=[f.x-14,f.y-6],b=[f.x+14,f.y+6],now=performance.now();trail=[{p:a,t:now},{p:b,t:now+30}];swipeCuts=0;slash();sliceSeg(a,b);endSwipe()});
+
+/* ---------- drawing ---------- */
+function bg(c){const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,"#2a2160");g.addColorStop(1,"#4b2f86");c.fillStyle=g;c.fillRect(0,0,100,H);
+  const r=K.rng(3);c.fillStyle="rgba(255,255,255,.5)";for(let i=0;i<40;i++){c.beginPath();c.arc(r()*100,r()*H,r()*.5+.15,0,TAU);c.fill()}
+  c.fillStyle="rgba(255,255,255,.04)";for(let i=0;i<6;i++){c.beginPath();c.arc(r()*100,r()*H,10+r()*20,0,TAU);c.fill()}}
+function blob(c,s){const r=K.rng(Math.floor(s.seed));c.globalAlpha=.55*s.life;c.fillStyle=s.col;c.beginPath();for(let i=0;i<=12;i++){const a=i/12*TAU,rr=s.r*(.7+r()*.5);c.lineTo(s.x+Math.cos(a)*rr,s.y+Math.sin(a)*rr)}c.fill();for(let i=0;i<5;i++){const a=r()*TAU,d=s.r*(1.1+r()*.7);c.beginPath();c.arc(s.x+Math.cos(a)*d,s.y+Math.sin(a)*d,s.r*.15*(.5+r()),0,TAU);c.fill()}c.globalAlpha=1}
+function drawFruit(c,kind,x,y,r,rot){const s=r*2.5;c.save();c.translate(x,y);c.rotate(rot);c.translate(-s/2,-s/2);c.scale(s/100,s/100);K.drawArt(c,kind);c.restore()}
+function drawBomb(c,o,t){c.save();c.translate(o.x,o.y);c.rotate(o.rot*.3);circ(c,0,0,o.r,"#1d1730","#000",.6);ell(c,-o.r*.35,-o.r*.4,o.r*.3,o.r*.18,"rgba(255,255,255,.35)",null,0,-.6);
+  rrect(c,-2,-o.r-2.2,4,3,1);fs(c,"#5d5679");c.beginPath();c.moveTo(0,-o.r-2);c.quadraticCurveTo(4,-o.r-6,2,-o.r-9);c.strokeStyle="#c9a26b";c.lineWidth=1;c.stroke();
+  const fl=1+Math.sin(t*30)*.3;K.star5?K.star5(c,2,-o.r-9,2.6*fl,1.1*fl,"#ffd23f","#ff6b2a",.4):0;
+  c.fillStyle="#ff5a5f";c.font="800 6px 'Baloo Thambi 2',sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText("✕",0,.5);c.restore()}
+function drawHalf(c,h){const s=h.r*2.5;c.save();c.translate(h.x,h.y);c.rotate(h.ang+h.spin);c.beginPath();c.rect(-s,h.side<0?-s:0,2*s,s);c.clip();
+  c.save();c.rotate(h.rot0);c.translate(-s/2,-s/2);c.scale(s/100,s/100);K.drawArt(c,h.kind);c.restore();
+  c.fillStyle=JUICE[h.kind];c.globalAlpha=.85;c.fillRect(-h.r,-.6,2*h.r,1.2);c.globalAlpha=1;c.restore()}
+function hud(c){
+  c.save();c.textBaseline="top";c.font="800 9px 'Baloo Thambi 2',sans-serif";c.textAlign="right";c.lineWidth=1.6;c.strokeStyle="#2b2540";c.fillStyle="#ffe066";
+  const top=(14+ (parseFloat(getComputedStyle(document.documentElement).paddingTop)||0))/u+1;
+  c.textAlign="center";c.strokeText(String(score),50,top-1);c.fillText(String(score),50,top-1);
+  c.font="700 3.6px 'Baloo Thambi 2',sans-serif";c.fillStyle="#e6defa";c.fillText("Best "+best,50,top+9);
+  for(let i=0;i<3;i++){const x=80+i*6.5,y=top+9;c.font="800 7px 'Baloo Thambi 2',sans-serif";c.textAlign="center";c.fillStyle=i<strikes?"#ff4d4d":"rgba(255,255,255,.25)";c.fillText("✕",x,y)}
+  c.restore()}
+function draw(t){
+  const c=ctx;c.setTransform(dpr*u,0,0,dpr*u,0,0);
+  if(shake>0){c.translate((Math.random()-.5)*3*shake,(Math.random()-.5)*3*shake)}
+  bg(c);splats.forEach(s=>blob(c,s));
+  halves.forEach(h=>drawHalf(c,h));
+  objs.forEach(o=>{if(o.kind==="bomb")drawBomb(c,o,t);else drawFruit(c,o.kind,o.x,o.y,o.r,o.rot)});
+  for(const p of parts){c.globalAlpha=Math.max(0,p.life);circ(c,p.x,p.y,p.r,p.col)}c.globalAlpha=1;
+  const now=performance.now();trail=trail.filter(q=>now-q.t<160);
+  if(trail.length>1){c.lineCap="round";c.lineJoin="round";for(let i=1;i<trail.length;i++){const k=1-(now-trail[i].t)/160;c.strokeStyle=`rgba(180,240,255,${.5*k})`;c.lineWidth=3.2*k;c.beginPath();c.moveTo(trail[i-1].p[0],trail[i-1].p[1]);c.lineTo(trail[i].p[0],trail[i].p[1]);c.stroke();c.strokeStyle=`rgba(255,255,255,${k})`;c.lineWidth=1.4*k;c.stroke()}}
+  for(const pp of popups){c.globalAlpha=Math.min(1,pp.life);c.font="800 6px 'Baloo Thambi 2',sans-serif";c.textAlign="center";c.lineWidth=1.4;c.strokeStyle="#2b2540";c.strokeText(pp.t,pp.x,pp.y);c.fillStyle="#ffe066";c.fillText(pp.t,pp.x,pp.y)}c.globalAlpha=1;
+  if(state!=="menu")hud(c);
+  if(flash>0){c.setTransform(1,0,0,1,0,0);c.fillStyle=`rgba(255,255,255,${flash})`;c.fillRect(0,0,cv.width,cv.height)}
+}
+let lastT=performance.now(),lastFrame=0;
+function frame(now){
+  lastFrame=performance.now();const dt=Math.min(.04,Math.max(0,(now-lastT)/1000));lastT=now;
+  try{
+    if(state==="play"&&now>nextWave)wave((now-t0)/1000);
+    for(const o of objs){o.vy+=G*dt;o.x+=o.vx*dt;o.y+=o.vy*dt;o.rot+=o.vr*dt;
+      if(o.vy>0&&o.y>H+12){o.gone=true;if(o.kind!=="bomb"&&state==="play"){strikes++;K.sfx.oops();popups.push({t:"✕",x:Math.max(6,Math.min(94,o.x)),y:H-8,life:1});if(strikes>=3)gameOver("miss")}}}
+    objs=objs.filter(o=>!o.gone&&!o.dead);
+    for(const h of halves){h.vy+=G*dt;h.x+=h.vx*dt;h.y+=h.vy*dt;h.spin+=h.vs*dt;h.life-=dt}halves=halves.filter(h=>h.life>0&&h.y<H+30);
+    for(const p of parts){p.vy+=60*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt/p.max}parts=parts.filter(p=>p.life>0);
+    for(const s of splats)s.life-=dt*.25;splats=splats.filter(s=>s.life>0);
+    for(const pp of popups){pp.life-=dt;pp.y-=6*dt}popups=popups.filter(p=>p.life>0);
+    shake=Math.max(0,shake-dt*1.5);flash=Math.max(0,flash-dt*1.6);
+    if(state==="menu"&&Math.random()<dt*1.2)toss(K.pick(FRUITS));
+    draw(now/1000);
+  }catch(err){console.error(err);try{cv.width=cv.width}catch(e){}}
+  requestAnimationFrame(frame);
+}
+setInterval(()=>{if(!document.hidden&&performance.now()-lastFrame>1500){lastT=performance.now();requestAnimationFrame(frame)}},1000);
+addEventListener("pageshow",resize);
+menu();requestAnimationFrame(frame);
+window.__cc={start,state:()=>({state,score,strikes,objs:objs.length}),slice:sliceSeg,objs:()=>objs.map(o=>({k:o.kind,x:o.x,y:o.y}))};
+K.sw();
+})();
+</script>
+</body>
+</html>
