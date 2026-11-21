@@ -145,12 +145,26 @@ K.sfx={pop(){tone(520,.08,"triangle",.14);tone(780,.1,"triangle",.1,.05)},tap(){
 
 /* ---------- voice (English + Tamil) ---------- */
 let vEn=null,vTa=null;
-function pickVoices(){try{const v=speechSynthesis.getVoices();vEn=v.find(x=>/en[-_]IN/i.test(x.lang))||v.find(x=>/^en/i.test(x.lang))||null;vTa=v.find(x=>/^ta/i.test(x.lang))||null}catch(e){}}
-if("speechSynthesis" in window){pickVoices();try{speechSynthesis.addEventListener("voiceschanged",pickVoices)}catch(e){}}
+/* Pick the sweetest female voice the device has: Tamil for Tamil words, Indian English for the rest. A parent can override in the home screen's Voice settings. */
+const FEM=/female|woman|veena|vani|neerja|heera|swara|lekha|kalpana|pallavi|aditi|raveena|isha|kajal|priya|sangeeta|shruti|samantha|karen|moira|tessa|serena|victoria|zira|susan|kate|fiona|allison|ava\b|joanna|libby|sonia|natasha|google uk english female|google us english/i;
+const MAL=/\bmale\b|valluvar|rishi|ravi|hemant|prabhat|madhur|aaron|daniel|alex\b|fred|thomas|arthur|oliver|ryan|guy|google uk english male/i;
+const GOOD=/natural|neural|enhanced|premium|online|google/i;
+function vscore(v,lang){let s=0;
+  if(lang==="ta"){if(!/^ta/i.test(v.lang))return -999}else{if(!/^en/i.test(v.lang))return -999;if(/en[-_]IN/i.test(v.lang))s+=30;else if(/en[-_](GB|AU|IE)/i.test(v.lang))s+=8}
+  if(/female/i.test(v.name)||FEM.test(v.name))s+=40;else if(MAL.test(v.name))s-=60;
+  if(GOOD.test(v.name))s+=15;if(v.localService===false)s+=4;if(v.default)s+=2;return s}
+K.voiceList=function(lang){try{return speechSynthesis.getVoices().filter(v=>vscore(v,lang)>-999).sort((a,b)=>vscore(b,lang)-vscore(a,lang))}catch(e){return[]}};
+function pickVoices(){try{const all=speechSynthesis.getVoices(),sEn=K.store.get("kg_voice_en",""),sTa=K.store.get("kg_voice_ta","");
+  vEn=all.find(v=>v.name===sEn)||K.voiceList("en")[0]||null;vTa=all.find(v=>v.name===sTa)||K.voiceList("ta")[0]||null}catch(e){}}
+K.setVoice=(lang,name)=>{K.store.set("kg_voice_"+lang,name);pickVoices()};
+K.currentVoice=lang=>lang==="ta"?vTa:vEn;
+if("speechSynthesis" in window){pickVoices();try{speechSynthesis.addEventListener("voiceschanged",pickVoices)}catch(e){}setTimeout(pickVoices,800)}
 K.hasTamilVoice=()=>!!vTa;
+K.voicePitch=()=>K.store.get("kg_pitch",1.12);K.voiceRate=()=>K.store.get("kg_rate",.88);
 /* parts: string, or [{t:"three"},{t:"மூன்று",ta:"moondru"}] */
-K.speak=function(parts){if(!K.sound||!("speechSynthesis" in window))return;if(typeof parts==="string")parts=[{t:parts}];
-  try{speechSynthesis.cancel();for(const p of parts){let u;if(p.ta!==undefined){if(vTa){u=new SpeechSynthesisUtterance(p.t);u.voice=vTa;u.lang=vTa.lang}else{u=new SpeechSynthesisUtterance(p.ta);if(vEn)u.voice=vEn;u.lang=vEn?vEn.lang:"en-IN"}}else{u=new SpeechSynthesisUtterance(p.t);if(vEn)u.voice=vEn;u.lang=vEn?vEn.lang:"en-IN"}u.rate=p.rate||.9;u.pitch=1.2;speechSynthesis.speak(u)}}catch(e){}};
+K.speak=function(parts){if(!K.sound||!("speechSynthesis" in window))return;if(typeof parts==="string")parts=[{t:parts}];if(!vEn&&!vTa)pickVoices();
+  try{speechSynthesis.cancel();for(const p of parts){let u;if(p.ta!==undefined){if(vTa){u=new SpeechSynthesisUtterance(p.t);u.voice=vTa;u.lang=vTa.lang}else{u=new SpeechSynthesisUtterance(p.ta);if(vEn)u.voice=vEn;u.lang=vEn?vEn.lang:"en-IN"}}else{u=new SpeechSynthesisUtterance(p.t);if(vEn)u.voice=vEn;u.lang=vEn?vEn.lang:"en-IN"}
+    u.rate=(p.rate||1)*K.voiceRate();u.pitch=K.voicePitch();speechSynthesis.speak(u)}}catch(e){}};
 K.hush=()=>{try{speechSynthesis.cancel()}catch(e){}};
 K.soundButton=function(btn,onChange){const draw=()=>{btn.innerHTML=K.sound?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';btn.setAttribute("aria-label",K.sound?"Sound on":"Sound off")};
   draw();btn.onclick=()=>{K.sound=!K.sound;K.store.set("kg_sound",K.sound);draw();if(!K.sound)K.hush();else K.sfx.pop();onChange&&onChange()}};

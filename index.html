@@ -38,12 +38,25 @@ a.game:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
 .art canvas{width:100%;height:100%;display:block}
 .new{position:absolute;top:8px;right:8px;background:#ff6b5a;color:#fff;font-weight:800;font-size:12px;border:3px solid #fff;border-radius:999px;padding:2px 9px;letter-spacing:.04em}
 .play{display:none}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.vbtn{flex:none;border:3px solid #fff;background:#ffd166;border-radius:999px;padding:10px 16px;font:800 16px/1 var(--font);color:var(--ink);cursor:pointer;box-shadow:0 3px 0 rgba(43,37,64,.16);margin-top:6px}
+.vpanel{position:fixed;inset:0;background:rgba(43,37,64,.4);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.vpanel>div{background:var(--paper);width:100%;max-width:560px;border-radius:28px 28px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px;max-height:88%;overflow:auto}
+.vpanel h2{margin:0;font-size:24px;font-weight:800}
+.vpanel label{font-weight:800;font-size:15px;display:block;margin-bottom:4px}
+.vpanel select{width:100%;font:600 15px/1.2 var(--font);padding:10px;border-radius:14px;border:2px solid #e2d8f3;background:#fff;color:var(--ink)}
+.vrow{display:flex;gap:8px;align-items:center}
+.vrow select{flex:1;min-width:0}
+.vt{flex:none;border:0;background:#8e6cff;color:#fff;font:800 15px/1 var(--font);border-radius:12px;padding:12px 14px;cursor:pointer}
+.vpanel input[type=range]{width:100%}
+.vnote{color:var(--muted);font-weight:600;font-size:14px;line-height:1.35;margin:0}
+.vdone{border:0;background:#3ccf6a;color:#fff;font:800 18px/1 var(--font);border-radius:999px;padding:14px;cursor:pointer}
 .foot{margin-top:22px;color:var(--muted);font-weight:600;font-size:14px;text-align:center}
 </style>
 </head>
 <body>
 <main>
-  <h1><span>Kutty</span> <span>Games</span></h1>
+  <div class="top"><h1><span>Kutty</span> <span>Games</span></h1><button class="vbtn" id="bVoice">🔊 Voice</button></div>
   <p class="sub">குட்டி விளையாட்டுகள் · Pick a game to play</p>
   <div class="games">
     <a class="game" href="crayons/" style="--bg:#d9ecff;--btn:#3a9df0">
@@ -111,6 +124,30 @@ const ART={
  chop(c){c.fillStyle="#3b2a78";c.fillRect(0,0,100,100);at(c,"watermelon",30,46,40);at(c,"banana",70,40,34);c.save();c.strokeStyle="#fff";c.lineWidth=3;c.lineCap="round";c.beginPath();c.moveTo(12,80);c.lineTo(88,20);c.stroke();c.restore();K.circ(c,76,74,9,"#1d1730");c.fillStyle="#ffd23f";K.circ(c,82,63,3,"#ffd23f")},
  puzzle(c){const s=["sun","tree","car","house"];s.forEach((n,i)=>{const x=30+(i%2)*40,y=30+Math.floor(i/2)*40,o=i===3?4:0;rrect(c,x-19+o,y-19+o,38,38,4);fs(c,"#fff","rgba(43,37,64,.25)",1);at(c,n,x+o,y+o,30)})}};
 document.querySelectorAll("[data-art]").forEach(el=>{const r=el.getBoundingClientRect();const w=r.width||200,h=w*10/16;const cv=K.canvas(c=>{c.save();c.translate(50,50);c.scale(1,1);c.translate(-50,-50);ART[el.dataset.art](c);c.restore()},h);cv.style.width="auto";cv.style.height="100%";el.append(cv)});
+})();
+</script>
+<script>
+(function(){const K=Kit,$=K.$;
+$("#bVoice").onclick=()=>{
+  const opt=lang=>{const cur=K.currentVoice(lang),l=K.voiceList(lang);if(!l.length)return'<option value="">No voice on this device</option>';return l.map(v=>`<option value="${v.name.replace(/"/g,"&quot;")}" ${cur&&cur.name===v.name?"selected":""}>${v.name} (${v.lang})</option>`).join("")};
+  const d=document.createElement("div");d.className="vpanel";d.innerHTML=`<div role="dialog" aria-label="Voice settings"><h2>Voice</h2>
+   <p class="vnote">Pick the sweetest female voice on this phone or TV. The best one is chosen for you; tap Test to hear others.</p>
+   <div><label for="vEn">English voice</label><div class="vrow"><select id="vEn">${opt("en")}</select><button class="vt" id="tEn">Test</button></div></div>
+   <div><label for="vTa">தமிழ் voice</label><div class="vrow"><select id="vTa">${opt("ta")}</select><button class="vt" id="tTa">Test</button></div></div>
+   <div><label for="vPitch">Sweetness (pitch)</label><input type="range" id="vPitch" min="0.9" max="1.5" step="0.05" value="${K.voicePitch()}"></div>
+   <div><label for="vRate">Speed</label><input type="range" id="vRate" min="0.6" max="1.1" step="0.05" value="${K.voiceRate()}"></div>
+   <p class="vnote">No Tamil voice, or it sounds robotic? On Android: Settings → Text-to-speech → Google → Install voice data → தமிழ் and English (India), pick a female voice. On iPhone: Settings → Accessibility → Spoken Content → Voices → Tamil (Vani) and English (India) → download the Enhanced voice. Then reopen this page.</p>
+   <button class="vdone" id="vDone">Done</button></div>`;
+  document.body.append(d);
+  const test=()=>{K.actx();K.speak([{t:"Hi! Let's play together!"},{t:"வணக்கம்! விளையாடலாமா?",ta:"Vanakkam! Vilaiyaadalaamaa?"}])};
+  $("#vEn").onchange=e=>{K.setVoice("en",e.target.value);K.speak("Hi! Let's play together!")};
+  $("#vTa").onchange=e=>{K.setVoice("ta",e.target.value);K.speak([{t:"வணக்கம்! விளையாடலாமா?",ta:"Vanakkam"}])};
+  $("#tEn").onclick=()=>{K.actx();K.speak("Hi! Let's play together! Well done!")};
+  $("#tTa").onclick=()=>{K.actx();K.speak([{t:"வணக்கம்! விளையாடலாமா? மிகவும் நன்று!",ta:"Vanakkam"}])};
+  $("#vPitch").oninput=e=>{K.store.set("kg_pitch",+e.target.value)};$("#vPitch").onchange=test;
+  $("#vRate").oninput=e=>{K.store.set("kg_rate",+e.target.value)};$("#vRate").onchange=test;
+  const close=()=>d.remove();$("#vDone").onclick=close;d.onclick=e=>{if(e.target===d)close()};d.classList.add("sheet");setTimeout(()=>K.focus($("#tEn")),30);
+};
 })();
 </script>
 <script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
