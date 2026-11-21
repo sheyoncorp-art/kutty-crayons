@@ -221,7 +221,7 @@ const DOODLE={name:"Doodle pad",ta:"ஓவியம்",clue:"Draw anything you 
 const stage=$("#stage"),board=$("#board"),paint=$("#paint"),lines=$("#lines"),trace=$("#trace"),marker=$("#marker");
 const pctx=paint.getContext("2d",{willReadFrequently:true}),lctx=lines.getContext("2d"),tctx=trace.getContext("2d");
 const scratch=document.createElement("canvas").getContext("2d");
-const dpr=Math.min(window.devicePixelRatio||1,2.5);
+const dpr=Math.min(window.devicePixelRatio||1,2);
 let S=0,levelIdx=store.get("kc_level",0),mode="trace",doodle=false;
 let prog=store.get("kc_prog2",{unlocked:1,stars:{}});
 let part=0,dots=[],strokes=[],cur=null,waitUp=false,ink={on:0,all:0};
@@ -485,6 +485,7 @@ function layout(){
   redrawLines();drawTrace();placeMarkerIdle();
 }
 new ResizeObserver(layout).observe(stage);
+const revive=()=>{if(document.hidden)return;try{redrawLines();drawTrace();placeMarkerIdle()}catch(e){}};document.addEventListener("visibilitychange",revive);addEventListener("pageshow",revive);
 if(levelIdx>=prog.unlocked)levelIdx=prog.unlocked-1;
 loadLevel(levelIdx);layout();
 })();

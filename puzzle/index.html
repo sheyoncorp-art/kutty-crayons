@@ -70,7 +70,7 @@ const SCENES=[
   {id:"road",name:"Road trip",draw(c){sky(c,"#a8e0ff","#e6f7ff",64);cloud(c,20,14,.8);cloud(c,60,22,.7);ell(c,30,64,40,14,"#9be15d");ell(c,80,66,36,12,"#86d14a");c.fillStyle="#9be15d";c.fillRect(0,64,100,36);c.fillStyle="#6b6680";c.fillRect(0,72,100,18);for(let x=4;x<100;x+=16)c.fillRect(x,80,8,2.2),c.fillStyle="#fff",c.fillRect(x,80,8,2.2),c.fillStyle="#6b6680";
     place(c,"sun",86,14,20);place(c,"tree",12,54,30);place(c,"bus",70,70,40);place(c,"car",30,76,34)}}];
 let size=K.store.get("kp_size",4),done=K.store.get("kp_done",{}),si=0,run=0,sayText="",B=0,full=null,pieces=[],placed=0;
-const dpr=Math.min(window.devicePixelRatio||1,2.5);
+const dpr=Math.min(window.devicePixelRatio||1,2);
 const GRID={4:[2,2],6:[3,2],9:[3,3]};
 function sizes(){[4,6,9].forEach(n=>$("#sz"+n).setAttribute("aria-pressed",String(size===n)))}
 [4,6,9].forEach(n=>$("#sz"+n).onclick=()=>{size=n;K.store.set("kp_size",n);sizes();K.sfx.tap()});
@@ -124,6 +124,7 @@ function complete(){
     if($("#dHard"))$("#dHard").onclick=()=>{size=size===4?6:9;K.store.set("kp_size",size);play(si)};
   },900);
 }
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!$("#game").hidden&&full)drawBoard()});
 picker();
 window.__kp={play,solve:()=>{pieces.forEach(p=>p.done=true);placed=pieces.length;drawBoard();complete()}};
 K.sw();

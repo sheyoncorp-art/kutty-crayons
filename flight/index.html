@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kutty Flight</title>
+<meta name="theme-color" content="#fff6ea">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+#area{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
+.cabin{flex:1;min-height:0;position:relative;border-radius:28px;background:linear-gradient(#eef3fb,#e2eaf7);box-shadow:inset 0 0 0 4px #fff,0 8px 20px rgba(43,37,64,.10);overflow:hidden;display:flex;flex-direction:column}
+.wins{display:flex;justify-content:space-around;padding:12px 18px 0;flex:none}
+.win{width:46px;height:58px;border-radius:24px;border:5px solid #fff;box-shadow:0 0 0 2px #cfd8ea;background:#8fd3ff linear-gradient(#7cc4ff,#cdeeff);position:relative;overflow:hidden}
+.win::after{content:"";position:absolute;left:0;top:18px;width:200%;height:20px;background:radial-gradient(circle at 12px 10px,#fff 9px,transparent 10px),radial-gradient(circle at 26px 8px,#fff 11px,transparent 12px);background-size:60px 20px;animation:clouds 4s linear infinite}
+@keyframes clouds{to{transform:translateX(-60px)}}
+.belt{align-self:center;margin-top:6px;background:#2b2540;color:#ffd166;font-weight:800;font-size:12px;border-radius:8px;padding:2px 10px;letter-spacing:.05em}
+.seats{flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:0 10px 10px}
+.seat{position:relative;flex:1;max-width:150px;display:flex;flex-direction:column;align-items:center;border-radius:20px;outline-offset:2px;cursor:default;transition:transform .3s}
+.seat canvas.pas{width:100%;height:auto;aspect-ratio:1;display:block}
+.seat.in{animation:slideIn .5s both}
+@keyframes slideIn{from{transform:translateX(120vw)}}
+.want{position:relative;background:#fff;border-radius:16px;padding:4px 8px;display:flex;align-items:center;gap:2px;box-shadow:0 3px 0 rgba(43,37,64,.12);margin-bottom:4px;min-height:52px}
+.want::after{content:"";position:absolute;bottom:-8px;left:50%;margin-left:-8px;border:8px solid transparent;border-top-color:#fff;border-bottom:0}
+.want canvas{width:44px;height:44px}
+.want b{font-size:20px;color:var(--tomato)}
+.want.ok{background:#e6fbef}.want.ok::after{border-top-color:#e6fbef}
+.tray{display:flex;gap:2px;justify-content:center;min-height:30px;background:#cfd8ea;border-radius:8px;padding:2px 6px;margin-top:-6px;width:80%}
+.tray canvas{width:28px;height:28px;animation:bounceIn .35s}
+.bottom{display:flex;align-items:flex-end;gap:8px;flex:none}
+.hostess{width:96px;height:120px;flex:none}
+.cart{flex:1;background:linear-gradient(#d9dde8,#bfc5d4);border-radius:18px 18px 10px 10px;border:3px solid #fff;padding:8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;position:relative;box-shadow:0 6px 0 #9aa0b3;margin-bottom:10px}
+.cart::before,.cart::after{content:"";position:absolute;bottom:-16px;width:16px;height:16px;border-radius:50%;background:#2b2540}
+.cart::before{left:18px}.cart::after{right:18px}
+.food{width:64px;height:64px;border-radius:16px;border:3px solid #fff;background:#fff;box-shadow:0 3px 0 rgba(43,37,64,.14);padding:0;cursor:grab;display:grid;place-items:center}
+.food canvas{width:52px;height:52px;pointer-events:none}
+.start{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.start h2{margin:0;font-size:30px;font-weight:800}
+.start p{margin:0;color:var(--muted);font-weight:700;font-size:16px;max-width:32ch}
+.start .row{display:flex;align-items:flex-end;gap:6px}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header class="gh">
+    <a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="bHome"></a>
+    <div class="card"><div class="txt"><span class="lbl" id="lbl">Kutty Flight · குட்டி விமானம்</span><p class="say" id="say">Welcome aboard!</p></div><button class="hear" id="bHear" aria-label="Say it again"></button></div>
+    <button class="stk" id="bSound" style="--c:var(--sun)"></button>
+  </header>
+  <div class="rounds" id="rounds"></div>
+  <div id="area"></div>
+</div>
+<div id="overlay"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$,area=$("#area"),{circ,ell,rrect,fs,seg,poly}=K,PI=Math.PI;
+$("#bHome").innerHTML=K.HOME;$("#bHear").innerHTML=K.HEAR;K.soundButton($("#bSound"));
+const PAX={bear:"Bobo",cat:"Mimi",elephant:"Gogo",puppy:"Tommy",bunny:"Pinky",zebra:"Zuzu",goat:"Gundu",mouse:"Chikki"};
+const FOODS=["juice","jug","sandwich","apple","banana","cupcake","icecream"];
+const NAME={juice:"juice",jug:"water",sandwich:"sandwich",apple:"apple",banana:"banana",cupcake:"cupcake",icecream:"ice cream"};
+const ONE={juice:"some juice",jug:"some water",sandwich:"a sandwich",apple:"an apple",banana:"a banana",cupcake:"a cupcake",icecream:"an ice cream"};
+const TWO={juice:"two juices",jug:"two waters",sandwich:"two sandwiches",apple:"two apples",banana:"two bananas",cupcake:"two cupcakes",icecream:"two ice creams"};
+const ROWS=[{n:3,two:0},{n:4,two:0},{n:3,two:2}];
+let row=0,mistakes=0,run=0,sayText="",pax=[];
+
+function hostess(c,happy){
+  ell(c,50,98,26,4,"rgba(43,37,64,.15)");
+  c.beginPath();c.moveTo(30,58);c.lineTo(70,58);c.lineTo(76,96);c.lineTo(24,96);c.closePath();fs(c,"#3a5bd9","#2a45b0",1.5);
+  poly(c,[[42,58],[58,58],[50,70]],"#ffffff");poly(c,[[44,60],[56,60],[50,66]],"#ff5a5f");
+  rrect(c,46,64,8,10,2);fs(c,"#ffd23f");
+  for(const k of [-1,1]){c.beginPath();c.moveTo(50+k*18,60);c.quadraticCurveTo(50+k*30,72,50+k*22,84);c.strokeStyle="#3a5bd9";c.lineWidth=7;c.lineCap="round";c.stroke();circ(c,50+k*22,85,4,"#f2c6a0")}
+  circ(c,50,22,13,"#3b2a2a");circ(c,50,9,7,"#3b2a2a");
+  circ(c,50,34,16,"#f2c6a0","#d9a57a",1);
+  c.beginPath();c.arc(50,30,16.5,PI*1.05,PI*1.95);c.lineTo(62,24);c.quadraticCurveTo(50,18,38,24);c.closePath();fs(c,"#3b2a2a");
+  rrect(c,38,14,24,7,3);fs(c,"#3a5bd9","#2a45b0",1);circ(c,50,17.5,1.6,"#ffd23f");
+  if(happy){for(const k of [-1,1]){c.beginPath();c.arc(50+k*6,34,2.4,PI*1.1,PI*1.9);c.strokeStyle=K.INK;c.lineWidth=1.4;c.stroke()}}
+  else for(const k of [-1,1]){circ(c,50+k*6,34,1.9,K.INK);circ(c,50+k*6+.6,33.4,.6,"#fff")}
+  c.globalAlpha=.55;circ(c,40,39,3,"#ff8fb8");circ(c,60,39,3,"#ff8fb8");c.globalAlpha=1;
+  c.beginPath();c.moveTo(45,41);c.quadraticCurveTo(50,46,55,41);c.strokeStyle="#b0384a";c.lineWidth=1.6;c.lineCap="round";c.stroke();
+}
+function seatPic(kind,happy){return K.canvas(c=>{
+  rrect(c,14,14,72,84,18);fs(c,"#3a5bd9","#2a45b0",2);rrect(c,24,8,52,20,9);fs(c,"#5b7bf0","#2a45b0",1.5);rrect(c,28,12,44,8,4);fs(c,"#ffffff");
+  const y=kind==="bunny"?62:kind==="elephant"?56:58,s=kind==="bunny"?1.05:kind==="elephant"?1.1:1.3;K.animal(c,kind,50,y,s,happy,0,false);
+  rrect(c,4,70,16,26,6);fs(c,"#2a45b0");rrect(c,80,70,16,26,6);fs(c,"#2a45b0");
+},120)}
+function say(t){sayText=t;$("#say").textContent=t;K.speak(t)}
+$("#bHear").onclick=()=>K.speak(sayText);
+function dots(){$("#rounds").innerHTML=ROWS.map((_,i)=>`<i class="${i<row?"on":i===row?"cur":""}"></i>`).join("")}
+
+function start(){
+  area.innerHTML=`<div class="start"><div class="row" id="sArt"></div><h2>Kutty Flight</h2><p>You are the air hostess! Give every passenger the food they ask for.</p><button class="go pulse" id="bGo">Take off!</button></div>`;
+  $("#sArt").append(K.canvas(c=>hostess(c,true),110),K.art("plane",120));
+  row=0;dots();say("Welcome aboard! Ready to serve?");
+  $("#bGo").onclick=()=>{K.actx();K.sfx.whoosh();row=0;buildRow()};
+}
+function buildRow(){
+  run++;mistakes=0;dots();const R=ROWS[row],kinds=K.shuffle(Object.keys(PAX)).slice(0,R.n);
+  const wants=K.shuffle(FOODS).slice(0,R.n);
+  pax=kinds.map((k,i)=>({k,want:wants[i],need:i<R.two?2:1,got:0}));pax=K.shuffle(pax);
+  const menu=K.shuffle([...new Set([...wants,...K.shuffle(FOODS)])].slice(0,Math.min(FOODS.length,R.n+2)));
+  area.innerHTML=`<div class="cabin"><div class="wins">${'<div class="win"></div>'.repeat(4)}</div><div class="belt">ROW ${row+1}</div><div class="seats" id="seats"></div></div><div class="bottom"><div id="hst"></div><div class="cart" id="cart"></div></div>`;
+  const hc=K.canvas(c=>hostess(c,false),96);hc.className="hostess";$("#hst").append(hc);
+  const seats=$("#seats");
+  pax.forEach((p,i)=>{const s=document.createElement("div");s.className="seat in";s.style.animationDelay=(i*.12)+"s";s.tabIndex=0;s.id="seat"+i;s.setAttribute("aria-label",PAX[p.k]+" wants "+NAME[p.want]);
+    const w=document.createElement("div");w.className="want";if(p.need>1){const b=document.createElement("b");b.textContent="2×";w.append(b)}w.append(K.art(p.want,44));
+    const pic=seatPic(p.k,false);pic.className="pas";const tr=document.createElement("div");tr.className="tray";
+    s.append(w,pic,tr);p.el=s;p.w=w;p.tray=tr;p.pic=pic;
+    s.addEventListener("click",()=>askFor(p));K.onOK(s,()=>askFor(p));seats.append(s)});
+  menu.forEach((f,i)=>{const b=document.createElement("button");b.className="food";b.id="food_"+f;b.setAttribute("aria-label",NAME[f]);b.append(K.art(f,52));
+    K.drag(b,{targets:()=>pax.filter(p=>p.got<p.need).map(p=>p.el),make:()=>K.art(f,72),
+      drop:(x,y)=>{const p=pax.find(p=>p.got<p.need&&K.hit(p.el,x,y,6));if(!p)return false;return give(p,f)},miss:()=>{}});
+    $("#cart").append(b)});
+  say(row===2?"Some friends want two! Count carefully.":row===0?"Give each friend the food they want":"More hungry friends!");
+}
+function askFor(p){if(p.got>=p.need)return;K.speak(`${PAX[p.k]} wants ${p.need>1?TWO[p.want]:ONE[p.want]}, please!`)}
+function give(p,f){
+  if(f!==p.want){mistakes++;K.sfx.oops();K.shake(p.el);K.speak(`No thank you. I want ${p.need>1?TWO[p.want]:ONE[p.want]}`);return false}
+  p.got++;p.tray.append(K.art(f,28));K.sfx.ding();
+  if(p.got>=p.need){const np=seatPic(p.k,true);np.className="pas";p.el.replaceChild(np,p.pic);p.pic=np;p.w.classList.add("ok");K.speak(K.pick(["Thank you!","Yummy, thank you!","Thank you, didi!"]));
+    if(pax.every(q=>q.got>=q.need))rowDone()}
+  else K.speak("One more please!");
+  return true;
+}
+function rowDone(){
+  const my=run;setTimeout(()=>{if(my!==run)return;K.sfx.yay();K.toast(K.praise());const hc=$("#hst canvas");if(hc){const n=K.canvas(c=>hostess(c,true),96);n.className="hostess";hc.replaceWith(n)}
+    setTimeout(()=>{if(my!==run)return;row++;if(row>=ROWS.length)finish();else{K.sfx.whoosh();buildRow()}},1600)},500);
+}
+function finish(){
+  dots();K.confetti(70);K.speak("Happy flight! Everyone is full and happy!");
+  const n=K.store.get("kf_flights",0)+1;K.store.set("kf_flights",n);
+  $("#overlay").innerHTML=`<div class="done" style="--doneBg:#3a9df0"><h1>HAPPY FLIGHT!</h1><div class="big" id="bigArt"></div><p>Everyone got their food!<small>Flights served: ${n}</small></p><div class="stars">★★★</div><div class="btns"><button class="pill b" id="dAgain">Fly again</button><a class="pill c" href="../" style="text-decoration:none">All games</a></div></div>`;
+  $("#bigArt").append(K.art("plane",200));
+  $("#dAgain").onclick=()=>{$("#overlay").innerHTML="";row=0;buildRow()};
+}
+start();
+window.__kf={solve:()=>{pax.forEach(p=>{while(p.got<p.need)give(p,p.want)})},state:()=>({row,pax:pax.map(p=>[p.k,p.want,p.need,p.got])})};
+K.sw();
+})();
+</script>
+</body>
+</html>

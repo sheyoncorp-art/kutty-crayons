@@ -66,7 +66,7 @@ const TA=[["அ","pineapple","அன்னாசி","annaasi","a"],["ஆ","goat
 const COLS=["#ff5a5f","#ff9f1c","#f0b400","#2ec27e","#18b3b3","#3a9df0","#8e6cff","#ff7ac6"];
 let tab=K.store.get("kl_tab","en"),done=K.store.get("kl_done",{en:{},ta:{}}),idx=0,tr=null,ok=false,down=false,last=null,col="#ff5a5f",S=0,run=0,sayParts="";
 const list=()=>tab==="en"?EN:TA;
-const cv=$("#tc"),ctx=cv.getContext("2d"),dpr=Math.min(window.devicePixelRatio||1,2.5);
+const cv=$("#tc"),ctx=cv.getContext("2d"),dpr=Math.min(window.devicePixelRatio||1,2);
 
 function picker(){
   run++;K.hush();$("#game").hidden=true;$("#picker").hidden=false;$("#overlay").innerHTML="";
@@ -91,11 +91,12 @@ function open(i){
   $("#reveal").className="reveal";$("#reveal").innerHTML='<span class="wait">Trace the letter to see the picture</span>';
   $("#bNext").classList.remove("ready");$("#bPrev").style.visibility=i>0?"visible":"hidden";
   layout();tr=new K.Trace(L[0]);if(K.tv)setTimeout(()=>K.focus(cv),50);
-  const my=run;const loop=t=>{if(my!==run)return;draw(t/1000);requestAnimationFrame(loop)};requestAnimationFrame(loop);
+  const my=run;const loop=t=>{if(my!==run)return;try{draw(t/1000)}catch(e){console.error(e);cv.width=cv.width}requestAnimationFrame(loop)};requestAnimationFrame(loop);
 }
 function draw(t){if(!S||!tr)return;ctx.setTransform(S*dpr/100,0,0,S*dpr/100,0,0);ctx.clearRect(0,0,100,100);tr.draw(ctx,col,ok,t)}
 function layout(){const st=$("#stage").getBoundingClientRect(),n=Math.floor(Math.min(st.width,st.height-190,460));if(n<80)return;S=n;cv.style.width=cv.style.height=S+"px";cv.width=cv.height=Math.round(S*dpr)}
 new ResizeObserver(()=>{if(!$("#game").hidden)layout()}).observe($("#stage"));
+addEventListener("pageshow",()=>{if(!$("#game").hidden)layout()});
 const toU=e=>{const b=cv.getBoundingClientRect();return[(e.clientX-b.left)/b.width*100,(e.clientY-b.top)/b.height*100]};
 cv.addEventListener("pointerdown",e=>{if(ok||!tr)return;K.actx();down=true;last=toU(e);tr.strokes.push([last]);tr.add(last,last);try{cv.setPointerCapture(e.pointerId)}catch(_){}});
 cv.addEventListener("pointermove",e=>{if(!down||ok)return;const p=toU(e);tr.strokes[tr.strokes.length-1].push(p);if(tr.add(last,p)&&Math.random()<.25)K.sfx.tap();last=p;if(tr.progress()>=.74)finish()});

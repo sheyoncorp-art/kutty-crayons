@@ -538,7 +538,7 @@ const GEST={
   swipe:'<svg viewBox="0 0 48 48" fill="none" stroke="#2b2540" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 34L40 14"/><path d="M30 12l10 2-3 10"/></svg>',
   stir:'<svg viewBox="0 0 48 48" fill="none" stroke="#2b2540" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M38 24a14 14 0 1 1-6-11.5"/><path d="M33 4l-1 9 9 1"/></svg>',
   rub:'<svg viewBox="0 0 48 48" fill="none" stroke="#2b2540" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 36l8-24 8 24 8-24 8 24 6-16"/></svg>'};
-function iconCanvas(draw,px){const cv=document.createElement("canvas"),d=Math.min(window.devicePixelRatio||1,2.5);cv.width=cv.height=Math.round(px*d);const c=cv.getContext("2d");c.setTransform(px*d/100,0,0,px*d/100,0,0);draw(c);return cv}
+function iconCanvas(draw,px){const cv=document.createElement("canvas"),d=Math.min(window.devicePixelRatio||1,2);cv.width=cv.height=Math.round(px*d);const c=cv.getContext("2d");c.setTransform(px*d/100,0,0,px*d/100,0,0);draw(c);return cv}
 
 /* ================= audio & voice ================= */
 let ac=null,sound=store.get("kk_sound",true),sizzleNode=null,noiseBuf=null;
@@ -559,7 +559,7 @@ function soundIcon(){$("#bSound").innerHTML=sound?'<svg viewBox="0 0 24 24" fill
 
 /* ================= game engine ================= */
 const cv=$("#cv"),ctx=cv.getContext("2d"),stage=$("#stage"),tray=$("#tray");
-const dpr=Math.min(window.devicePixelRatio||1,2.5);
+const dpr=Math.min(window.devicePixelRatio||1,2);
 let S=0,R=null,ri=0,st=null,si=0,step=null,lock=false,count=0,stirAcc=0,stirLast=null,swipe=null,down=false,lastP=null,lastAct=0,waitT0=0,samples=null,covered=null,coverN=0,stroke=null,run=0,trail=[];
 let done=store.get("kk_done",{});
 const friend=()=>ANIMALS[R.animal];
@@ -754,8 +754,10 @@ function draw(t){
   c.globalAlpha=1;
 }
 let lastT=performance.now(),steamT=0;
+let lastFrame=0;
 function frame(now){
-  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+  lastFrame=performance.now();const dt=Math.min(.05,Math.max(0,(now-lastT)/1000));lastT=now;
+  try{
   if(R&&st&&S){
     tweens=tweens.filter(w=>{const k=clamp((now-w.t0)/w.ms,0,1),e=1-Math.pow(1-k,3);w.o[w.k]=lerp(w.a,w.b,e);return k<1});
     if(step&&step.type==="wait"&&st.fire&&!lock){const p=clamp((now-waitT0)/(step.secs*1000),0,1);step.on(st,p);setBar(p);if(p>=1){st.fire=0;sizzleStop();completeStep()}}
@@ -763,11 +765,15 @@ function frame(now){
     parts=parts.filter(p=>{p.life-=dt/p.max;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.grow)p.r+=p.grow*dt;return p.life>0&&p.y<110});
     draw(now/1000);
   }
+  }catch(err){console.error(err);try{cv.width=cv.width;ctx.setTransform(1,0,0,1,0,0)}catch(e){}}
   requestAnimationFrame(frame);
 }
 function layout(){const r=stage.getBoundingClientRect(),n=Math.floor(Math.min(r.width,r.height,560));if(n<60)return;S=n;cv.style.width=cv.style.height=S+"px";cv.width=cv.height=Math.round(S*dpr)}
 new ResizeObserver(layout).observe(stage);
 showPicker();requestAnimationFrame(frame);
+setInterval(()=>{if(!document.hidden&&performance.now()-lastFrame>1500){lastT=performance.now();requestAnimationFrame(frame)}},1000);
+const revive=()=>{if(document.hidden)return;S=0;layout();lastT=performance.now()};
+document.addEventListener("visibilitychange",revive);addEventListener("pageshow",revive);addEventListener("focus",revive);
 window.__kk={start:startRecipe,skip:skipStep,state:()=>({si,type:step&&step.type,view:st&&st.view,lock})};
 if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("../sw.js",{scope:"../"}).catch(()=>{}));
 })();

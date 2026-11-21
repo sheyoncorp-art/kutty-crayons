@@ -87,6 +87,10 @@ a.game:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
       <div class="art" data-art="puzzle"></div>
       <div class="info"><div><b>Kutty Puzzle</b><small>Put the picture back together · புதிர்</small></div></div>
     </a>
+    <a class="game" href="flight/" style="--bg:#d6ecff;--btn:#3a5bd9"><span class="new">NEW</span>
+      <div class="art" data-art="flight"></div>
+      <div class="info"><div><b>Kutty Flight</b><small>Be the air hostess, serve the passengers · விமான விளையாட்டு</small></div></div>
+    </a>
   </div>
   <p class="foot">Tip: tap ⋮ → Add to Home screen to keep these games on the phone.</p>
 </main>
@@ -99,6 +103,7 @@ const ART={
  brain(c){[[18,18,"apple"],[50,18,"?"],[82,18,"star"]];for(const[x,y,n,o]of[[22,34,"apple",1],[50,34,"q",0],[78,34,"apple",1]]){rrect(c,x-13,y-13,26,26,6);fs(c,o?"#fff":"#8e6cff","#fff",1.5);if(o)at(c,n,x,y,20);else T(c,"?",x,y+1,18,"#fff")}at(c,"cat",30,66,30);at(c,"cat",64,66,30);K.circ(c,64,66,17,"rgba(74,68,96,.0)")},
  numbers(c){T(c,"1",22,40,34,"#ff5a5f");T(c,"2",50,40,34,"#ffb000");T(c,"3",78,40,34,"#2ec27e");for(let i=0;i<3;i++)at(c,"mango",30+i*20,74,20)},
  letters(c){T(c,"A",28,42,40,"#3a9df0");T(c,"அ",68,42,40,"#ff7ac6");at(c,"apple",28,76,22);at(c,"pineapple",68,76,22)},
+ flight(c){at(c,"plane",50,30,52);at(c,"juice",28,72,26);at(c,"sandwich",52,74,26);at(c,"cupcake",76,72,26)},
  puzzle(c){const s=["sun","tree","car","house"];s.forEach((n,i)=>{const x=30+(i%2)*40,y=30+Math.floor(i/2)*40,o=i===3?4:0;rrect(c,x-19+o,y-19+o,38,38,4);fs(c,"#fff","rgba(43,37,64,.25)",1);at(c,n,x+o,y+o,30)})}};
 document.querySelectorAll("[data-art]").forEach(el=>{const r=el.getBoundingClientRect();const w=r.width||200,h=w*10/16;const cv=K.canvas(c=>{c.save();c.translate(50,50);c.scale(1,1);c.translate(-50,-50);ART[el.dataset.art](c);c.restore()},h);cv.style.width="auto";cv.style.height="100%";el.append(cv)});
 })();
