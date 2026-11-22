@@ -124,6 +124,10 @@ a.game:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
       <div class="art" data-art="compare"></div>
       <div class="info"><div><b>More or Less</b><small>Which has more? · அதிகம் / குறைவு</small></div></div>
     </a>
+    <a class="game" href="race/" style="--bg:#5cbf4a;--btn:#ff6b5a"><span class="new">NEW</span>
+      <div class="art" data-art="race"></div>
+      <div class="info"><div><b>Kutty Racer</b><small>Car race, dodge and win the cup · கார் ரேஸ்</small></div></div>
+    </a>
   </div>
   <p class="foot">Tip: tap ⋮ → Add to Home screen to keep these games on the phone.</p>
 </main>
@@ -142,6 +146,9 @@ const ART={
  maze(c){c.strokeStyle="#5b4bb7";c.lineWidth=3;c.lineCap="round";c.beginPath();[[20,20,80,20],[20,20,20,80],[20,80,80,80],[80,20,80,80],[40,20,40,60],[60,40,60,80],[20,60,30,60]].forEach(l=>{c.moveTo(l[0],l[1]);c.lineTo(l[2],l[3])});c.stroke();at(c,"bunny",30,32,18);at(c,"carrot",70,70,18)},
  copy(c){[["#ff6b5a","cat"],["#3a9df0","elephant"],["#2ec27e","bird"],["#ffb000","bear"]].forEach((p,i)=>{const x=32+(i%2)*36,y=30+Math.floor(i/2)*40;K.rrect(c,x-16,y-16,32,32,8);K.fs(c,p[0],"#fff",2);at(c,p[1],x,y,24)})},
  compare(c){K.ell(c,28,56,20,22,"#ffe3d1");K.ell(c,72,56,20,22,"#d9ecff");[[22,48],[34,48],[22,62],[34,62],[28,55]].forEach(p=>at(c,"apple",p[0],p[1],12));[[66,52],[78,60]].forEach(p=>at(c,"apple",p[0],p[1],12))},
+ race(c){c.fillStyle="#5cbf4a";c.fillRect(0,0,100,100);c.fillStyle="#6b6680";c.fillRect(25,0,50,100);c.fillStyle="#fff";for(let y=4;y<100;y+=20){c.fillRect(41,y,2,10);c.fillRect(57,y,2,10)}
+  const car=(x,y,col)=>{K.rrect(c,x-6,y-11,12,22,5);K.fs(c,col,"rgba(43,37,64,.5)",.8);K.rrect(c,x-4.5,y-5,9,5,2);K.fs(c,"#2b4a7a");for(const[a,b]of[[-6.5,-6],[6.5,-6],[-6.5,6],[6.5,6]]){K.rrect(c,x+a-1.6,y+b-2.6,3.2,5.2,1);K.fs(c,"#2b2540")}};
+  car(50,70,"#ff3b4e");car(34,30,"#ffffff");car(66,44,"#ffb000");K.star5(c,50,71,2.6,1.1,"#ffe066")},
  puzzle(c){const s=["sun","tree","car","house"];s.forEach((n,i)=>{const x=30+(i%2)*40,y=30+Math.floor(i/2)*40,o=i===3?4:0;rrect(c,x-19+o,y-19+o,38,38,4);fs(c,"#fff","rgba(43,37,64,.25)",1);at(c,n,x+o,y+o,30)})}};
 document.querySelectorAll("[data-art]").forEach(el=>{const r=el.getBoundingClientRect();const w=r.width||200,h=w*10/16;const cv=K.canvas(c=>{c.save();c.translate(50,50);c.scale(1,1);c.translate(-50,-50);ART[el.dataset.art](c);c.restore()},h);cv.style.width="auto";cv.style.height="100%";el.append(cv)});
 })();
