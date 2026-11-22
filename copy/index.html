@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Copy Me</title>
+<meta name="theme-color" content="#fff6ea">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+#area{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-bottom:8px}
+.start{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.start h2{margin:0;font-size:30px;font-weight:800}
+.start p{margin:0;color:var(--muted);font-weight:700;font-size:16px;max-width:32ch}
+.start .art{display:flex;gap:6px;align-items:flex-end}
+.pads{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(100%,420px);aspect-ratio:1;max-height:100%}
+.pad{border:5px solid #fff;border-radius:30px;background:var(--c);box-shadow:0 6px 0 rgba(43,37,64,.18);display:grid;place-items:center;cursor:pointer;padding:0;transition:transform .12s,filter .12s;filter:saturate(.75) brightness(.95)}
+.pad canvas{width:70%;height:70%;pointer-events:none}
+.pad.lit{filter:saturate(1.3) brightness(1.15);transform:scale(1.06);box-shadow:0 0 0 6px #fff,0 0 30px var(--c)}
+.pad:disabled{cursor:default}
+.len{font-weight:800;color:var(--muted);font-size:16px}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header class="gh">
+    <a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="bHome"></a>
+    <div class="card"><div class="txt"><span class="lbl" id="lbl">Copy Me · நினைவாற்றல்</span><p class="say" id="say"></p></div><button class="hear" id="bHear" aria-label="Say it again"></button></div>
+    <button class="stk" id="bSound" style="--c:var(--sun)"></button>
+  </header>
+  <div class="rounds" id="rounds"></div>
+  <div id="area"></div>
+</div>
+<div id="overlay"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$,area=$("#area"),{circ,ell,rrect,fs,seg,poly}=K,PI=Math.PI,TAU=PI*2;
+$("#bHome").innerHTML=K.HOME;$("#bHear").innerHTML=K.HEAR;K.soundButton($("#bSound"));
+let sayText="",run=0,round=0,mistakes=0,TOTAL=5;
+function say(t,parts){sayText=parts||t;$("#say").textContent=t;K.speak(sayText)}
+$("#bHear").onclick=()=>K.speak(sayText);
+function dots(){$("#rounds").innerHTML=Array.from({length:TOTAL},(_,i)=>`<i class="${i<round?"on":i===round?"cur":""}"></i>`).join("")}
+function finishScreen(title,line,small,artName){K.confetti(70);K.speak(title.toLowerCase()+"! "+line);
+  $("#overlay").innerHTML=`<div class="done" style="--doneBg:#8e6cff"><h1>${title}</h1><div class="big" id="bigArt"></div><p>${line}<small>${small}</small></p><div class="stars">★★★</div><div class="btns"><button class="pill b" id="dAgain">Play again</button><a class="pill a" href="../" style="text-decoration:none">All games</a></div></div>`;
+  $("#bigArt").append(K.art(artName,200));$("#dAgain").onclick=()=>{$("#overlay").innerHTML="";begin()};}
+
+const PADS=[{a:"cat",c:"#ff6b5a",f:330},{a:"elephant",c:"#3a9df0",f:392},{a:"bird",c:"#2ec27e",f:494},{a:"bear",c:"#ffb000",f:587}];
+let seq=[],pos=0,busy=true,wrongs=0;TOTAL=5;const START=2;
+function tone(f){const a=K.actx();if(!a||!K.sound)return;try{const o=a.createOscillator(),g=a.createGain(),t=a.currentTime;o.type="triangle";o.frequency.value=f;g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.45);o.connect(g).connect(a.destination);o.start(t);o.stop(t+.5)}catch(e){}}
+function light(i,ms){const b=$("#pad"+i);if(!b)return;b.classList.add("lit");tone(PADS[i].f);setTimeout(()=>b.classList.remove("lit"),ms||420)}
+function setBusy(v){busy=v;document.querySelectorAll(".pad").forEach(b=>b.disabled=v)}
+async function play(){setBusy(true);const my=run;$("#say").textContent="Watch carefully…";await new Promise(r=>setTimeout(r,700));
+  for(const i of seq){if(my!==run)return;light(i,450);await new Promise(r=>setTimeout(r,650))}if(my!==run)return;pos=0;setBusy(false);say("Your turn! Copy me");if(K.tv)K.focus($("#pad0"))}
+function press(i){if(busy)return;light(i,250);if(i!==seq[pos]){mistakes++;wrongs++;K.sfx.oops();K.shake($("#pads"));say("Oops! Watch again");setTimeout(play,1000);return}
+  pos++;if(pos===seq.length){setBusy(true);K.sfx.ding();round++;dots();K.store.set("kc_best",Math.max(K.store.get("kc_best",0),seq.length));
+    if(round>=TOTAL){setTimeout(()=>{K.sfx.yay();finishScreen("SUPER MEMORY!",`You remembered ${seq.length} in a row!`,"Best: "+K.store.get("kc_best",0),"star")},500);return}
+    K.toast(K.praise());K.speak(K.praise()+" One more!");seq.push(K.rint(0,3));$("#len").textContent="Remember "+seq.length;setTimeout(play,1500)}}
+function begin(){run++;round=0;mistakes=0;wrongs=0;dots();seq=Array.from({length:START},()=>K.rint(0,3));
+  area.innerHTML=`<div class="len" id="len">Remember ${seq.length}</div><div class="pads" id="pads"></div>`;
+  PADS.forEach((p,i)=>{const b=document.createElement("button");b.className="pad";b.id="pad"+i;b.style.setProperty("--c",p.c);b.setAttribute("aria-label",K.label(p.a));b.append(K.art(p.a,140));b.onclick=()=>press(i);$("#pads").append(b)});
+  const r=area.getBoundingClientRect(),sz=Math.min(r.width,r.height-40,420);$("#pads").style.width=sz+"px";
+  say("Watch the friends light up, then copy them!");setTimeout(play,1600)}
+function intro(){area.innerHTML=`<div class="start"><div class="art" id="sArt"></div><h2>Copy Me</h2><p>The friends light up and sing. Remember the order and tap them the same way!</p><button class="go pulse" id="bGo">Start</button></div>`;
+  PADS.forEach(p=>$("#sArt").append(K.art(p.a,60)));dots();say("Can you remember the order?");$("#bGo").onclick=()=>{K.actx();K.sfx.pop();begin()}}
+intro();
+
+K.sw();
+})();
+</script>
+</body>
+</html>

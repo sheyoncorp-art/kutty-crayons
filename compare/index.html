@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>More or Less</title>
+<meta name="theme-color" content="#fff6ea">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+#area{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-bottom:8px}
+.start{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.start h2{margin:0;font-size:30px;font-weight:800}
+.start p{margin:0;color:var(--muted);font-weight:700;font-size:16px;max-width:32ch}
+.start .art{display:flex;gap:6px;align-items:flex-end}
+.plates{display:flex;gap:14px;width:100%;max-width:560px;justify-content:center}
+.plate{flex:1;min-height:200px;border-radius:28px;border:5px solid #fff;background:var(--bk);box-shadow:0 5px 0 rgba(43,37,64,.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;cursor:pointer;gap:8px}
+.plate .g{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:center;flex:1}
+.plate .g canvas{width:var(--os);height:var(--os)}
+.plate b{font-size:40px;font-weight:800;color:var(--ink);min-height:44px;line-height:1}
+.plate.ok{background:#d8f6e3;animation:bounceIn .4s}
+.word{font:800 26px/1 var(--font);color:#ff6b5a;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header class="gh">
+    <a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="bHome"></a>
+    <div class="card"><div class="txt"><span class="lbl" id="lbl">More or Less · அதிகம் / குறைவு</span><p class="say" id="say"></p></div><button class="hear" id="bHear" aria-label="Say it again"></button></div>
+    <button class="stk" id="bSound" style="--c:var(--sun)"></button>
+  </header>
+  <div class="rounds" id="rounds"></div>
+  <div id="area"></div>
+</div>
+<div id="overlay"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$,area=$("#area"),{circ,ell,rrect,fs,seg,poly}=K,PI=Math.PI,TAU=PI*2;
+$("#bHome").innerHTML=K.HOME;$("#bHear").innerHTML=K.HEAR;K.soundButton($("#bSound"));
+let sayText="",run=0,round=0,mistakes=0,TOTAL=5;
+function say(t,parts){sayText=parts||t;$("#say").textContent=t;K.speak(sayText)}
+$("#bHear").onclick=()=>K.speak(sayText);
+function dots(){$("#rounds").innerHTML=Array.from({length:TOTAL},(_,i)=>`<i class="${i<round?"on":i===round?"cur":""}"></i>`).join("")}
+function finishScreen(title,line,small,artName){K.confetti(70);K.speak(title.toLowerCase()+"! "+line);
+  $("#overlay").innerHTML=`<div class="done" style="--doneBg:#ff6b5a"><h1>${title}</h1><div class="big" id="bigArt"></div><p>${line}<small>${small}</small></p><div class="stars">★★★</div><div class="btns"><button class="pill b" id="dAgain">Play again</button><a class="pill a" href="../" style="text-decoration:none">All games</a></div></div>`;
+  $("#bigArt").append(K.art(artName,200));$("#dAgain").onclick=()=>{$("#overlay").innerHTML="";begin()};}
+
+TOTAL=6;let busy=false;
+const OB=["apple","mango","banana","orange","strawberry","star","ball","balloon","fish","flower","cupcake","cherry"];
+function begin(){round=0;mistakes=0;next()}
+function next(){run++;busy=false;dots();const gap=[4,3,3,2,2,1][round],mx=[5,6,7,8,9,10][round];let a,b;do{a=K.rint(1,mx);b=K.rint(1,mx)}while(Math.abs(a-b)<gap||a===b);
+  const q=round<2?"more":K.pick(["more","less"]),obj=K.pick(OB),ans=q==="more"?(a>b?0:1):(a<b?0:1),nm=K.label(obj).toLowerCase(),pl=nm==="fish"?"fish":nm==="strawberry"?"strawberries":nm==="cherry"?"cherries":nm+"s";
+  area.innerHTML=`<div class="word">${q==="more"?"MORE?":"LESS?"}</div><div class="plates" id="plates"></div>`;
+  const r=area.getBoundingClientRect(),os=Math.floor(Math.min(56,(Math.min(r.width,560)/2-40)/3.2));
+  [a,b].forEach((n,i)=>{const p=document.createElement("button");p.className="plate";p.id="plate"+i;p.style.setProperty("--bk",i?"#d9ecff":"#ffe3d1");p.style.setProperty("--os",os+"px");p.setAttribute("aria-label",(i?"Right":"Left")+" plate");
+    const g=document.createElement("div");g.className="g";for(let k=0;k<n;k++)g.append(K.art(obj,os));const lab=document.createElement("b");p.append(g,lab);
+    p.onclick=()=>{if(busy)return;if(i===ans){busy=true;p.classList.add("ok");document.querySelectorAll(".plate b").forEach((l,j)=>l.textContent=[a,b][j]);K.sfx.ding();
+        const big=Math.max(a,b),small=Math.min(a,b);K.speak(q==="more"?`Yes! ${K.EN_NUM[big]} is more than ${K.EN_NUM[small]}`:`Yes! ${K.EN_NUM[small]} is less than ${K.EN_NUM[big]}`);
+        const my=run;setTimeout(()=>{if(my!==run)return;round++;if(round>=TOTAL){dots();finishScreen("COUNTING STAR!","You know more and less!","அதிகம், குறைவு தெரியும்!","apple")}else next()},2600)}
+      else{mistakes++;K.sfx.oops();K.shake(p);K.speak("Count again!")}};$("#plates").append(p)});
+  say(`Which plate has ${q} ${pl}?`);}
+function intro(){area.innerHTML=`<div class="start"><div class="art" id="sArt"></div><h2>More or Less</h2><p>Look at the two plates. Tap the one with more, or the one with less!</p><button class="go pulse" id="bGo">Let's count!</button></div>`;
+  ["apple","apple","apple"].forEach(n=>$("#sArt").append(K.art(n,56)));dots();say("Which one has more?");$("#bGo").onclick=()=>{K.actx();K.sfx.pop();begin()}}
+intro();
+
+K.sw();
+})();
+</script>
+</body>
+</html>

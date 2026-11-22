@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Spot the Difference</title>
+<meta name="theme-color" content="#fff6ea">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+#area{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-bottom:8px}
+.start{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.start h2{margin:0;font-size:30px;font-weight:800}
+.start p{margin:0;color:var(--muted);font-weight:700;font-size:16px;max-width:32ch}
+.start .art{display:flex;gap:6px;align-items:flex-end}
+.pics{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+.pics canvas{border-radius:22px;box-shadow:0 8px 20px rgba(43,37,64,.12),0 0 0 4px #fff;touch-action:manipulation;cursor:pointer}
+.found{display:flex;gap:6px}.found i{width:22px;height:22px;border-radius:50%;background:#e6def3;display:grid;place-items:center;font-style:normal;color:#fff;font-weight:800;font-size:13px}.found i.on{background:#3ccf6a}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header class="gh">
+    <a class="stk" href="../" style="--c:var(--lilac)" aria-label="All games" id="bHome"></a>
+    <div class="card"><div class="txt"><span class="lbl" id="lbl">Spot the Difference · வேறுபாடு</span><p class="say" id="say"></p></div><button class="hear" id="bHear" aria-label="Say it again"></button></div>
+    <button class="stk" id="bSound" style="--c:var(--sun)"></button>
+  </header>
+  <div class="rounds" id="rounds"></div>
+  <div id="area"></div>
+</div>
+<div id="overlay"></div>
+<script src="../shared/kit.js"></script>
+<script>
+(function(){
+"use strict";
+const K=Kit,$=K.$,area=$("#area"),{circ,ell,rrect,fs,seg,poly}=K,PI=Math.PI,TAU=PI*2;
+$("#bHome").innerHTML=K.HOME;$("#bHear").innerHTML=K.HEAR;K.soundButton($("#bSound"));
+let sayText="",run=0,round=0,mistakes=0,TOTAL=5;
+function say(t,parts){sayText=parts||t;$("#say").textContent=t;K.speak(sayText)}
+$("#bHear").onclick=()=>K.speak(sayText);
+function dots(){$("#rounds").innerHTML=Array.from({length:TOTAL},(_,i)=>`<i class="${i<round?"on":i===round?"cur":""}"></i>`).join("")}
+function finishScreen(title,line,small,artName){K.confetti(70);K.speak(title.toLowerCase()+"! "+line);
+  $("#overlay").innerHTML=`<div class="done" style="--doneBg:#ff9f1c"><h1>${title}</h1><div class="big" id="bigArt"></div><p>${line}<small>${small}</small></p><div class="stars">★★★</div><div class="btns"><button class="pill b" id="dAgain">Play again</button><a class="pill a" href="../" style="text-decoration:none">All games</a></div></div>`;
+  $("#bigArt").append(K.art(artName,200));$("#dAgain").onclick=()=>{$("#overlay").innerHTML="";begin()};}
+
+const OBJS=["apple","banana","sun","star","flower","tree","ball","balloon","cat","fish","bird","car","house","kite","umbrella","cupcake","bunny","icecream","boat","moon","crown","mango"];
+const BGS={garden(c){c.fillStyle="#bfe6ff";c.fillRect(0,0,100,60);c.fillStyle="#9be15d";c.fillRect(0,60,100,40);ell(c,20,62,30,6,"#86d14a")},
+  sea(c){const g=c.createLinearGradient(0,0,0,100);g.addColorStop(0,"#8fe0ff");g.addColorStop(1,"#2a86d0");c.fillStyle=g;c.fillRect(0,0,100,100);c.fillStyle="#ffe0a3";c.fillRect(0,88,100,12)},
+  room(c){c.fillStyle="#ffe9f1";c.fillRect(0,0,100,66);c.fillStyle="#f2c494";c.fillRect(0,66,100,34);c.fillStyle="#e0a868";c.fillRect(0,66,100,2)}};
+const SLOTS=[[18,20],[50,18],[82,22],[20,50],[50,48],[80,50],[18,80],[50,80],[82,80]];
+let scene=null,diffs=[],found=0,cvs=[],S=0,idle=0;
+function pickScene(n){
+  const bg=K.pick(Object.keys(BGS)),slots=K.shuffle(SLOTS.map((p,i)=>i)),used=slots.slice(0,7),free=slots.slice(7);
+  const objs=used.map(i=>({n:K.pick(OBJS),x:SLOTS[i][0]+K.rint(-3,3),y:SLOTS[i][1]+K.rint(-3,3),s:22+K.rint(0,4)}));
+  const right=objs.map(o=>Object.assign({},o));diffs=[];
+  const order=K.shuffle(objs.map((_,i)=>i));let fi=0;
+  for(let k=0;k<n;k++){const type=k%3===2&&free[fi]!==undefined?"add":k%2?"swap":"remove";
+    if(type==="add"){const sl=SLOTS[free[fi++]],o={n:K.pick(OBJS),x:sl[0],y:sl[1],s:22};right.push(o);diffs.push({x:o.x,y:o.y,f:false})}
+    else{const i=order.pop(),o=right[i];if(type==="remove")o.hide=true;else{let m;do{m=K.pick(OBJS)}while(m===o.n);o.n=m}diffs.push({x:o.x,y:o.y,f:false})}}
+  scene={bg,left:objs,right};
+}
+function drawPic(cv,list){const d=Math.min(window.devicePixelRatio||1,2),c=cv.getContext("2d");c.setTransform(S*d/100,0,0,S*d/100,0,0);BGS[scene.bg](c);
+  for(const o of list){if(o.hide)continue;c.save();c.translate(o.x-o.s/2,o.y-o.s/2);c.scale(o.s/100,o.s/100);K.drawArt(c,o.n);c.restore()}
+  for(const df of diffs)if(df.f){circ(c,df.x,df.y,13,null,"#ffffff",3.2);circ(c,df.x,df.y,13,null,"#3ccf6a",2)}}
+function redraw(){drawPic(cvs[0],scene.left);drawPic(cvs[1],scene.right);$("#found").innerHTML=diffs.map(d=>`<i class="${d.f?"on":""}">${d.f?"✓":""}</i>`).join("")}
+function begin(){round=0;mistakes=0;next()}
+function next(){
+  run++;dots();const n=[3,3,4,4,5][round];pickScene(n);found=0;idle=performance.now();
+  const r=area.getBoundingClientRect(),land=r.width>r.height*1.15;S=Math.floor(land?Math.min((r.width-14)/2,r.height-50):Math.min(r.width,(r.height-60)/2));
+  area.innerHTML=`<div class="pics" id="pics"></div><div class="found" id="found"></div>`;cvs=[];
+  for(let i=0;i<2;i++){const d=Math.min(window.devicePixelRatio||1,2),cv=document.createElement("canvas");cv.width=cv.height=Math.round(S*d);cv.style.width=cv.style.height=S+"px";cv.tabIndex=0;cv.setAttribute("aria-label",i?"Changed picture":"First picture");if(i)cv.dataset.tvfirst="1";
+    cv.addEventListener("pointerdown",e=>tap(cv,e));K.onOK(cv,hint);$("#pics").append(cv);cvs.push(cv)}
+  redraw();say(`Find ${n} differences!`);
+}
+function tap(cv,e){const b=cv.getBoundingClientRect(),x=(e.clientX-b.left)/b.width*100,y=(e.clientY-b.top)/b.height*100;idle=performance.now();
+  const df=diffs.find(d=>!d.f&&Math.hypot(d.x-x,d.y-y)<14);
+  if(df){df.f=true;found++;K.sfx.ding();redraw();if(found===diffs.length){K.sfx.yay();K.toast(K.praise());K.speak(K.praise());const my=run;setTimeout(()=>{if(my!==run)return;round++;if(round>=TOTAL){dots();finishScreen("SHARP EYES!","You found all the differences!","வேறுபாடுகளைக் கண்டுபிடித்தாய்!","star")}else next()},1500)}else K.speak(`${diffs.length-found} more!`)}
+  else{mistakes++;K.sfx.oops()}}
+function hint(){const df=diffs.find(d=>!d.f);if(!df)return;df.f=true;found++;K.sfx.ding();redraw();if(found===diffs.length){const my=run;setTimeout(()=>{if(my!==run)return;round++;if(round>=TOTAL)finishScreen("SHARP EYES!","You found all the differences!","","star");else next()},1300)}}
+setInterval(()=>{if(scene&&found<diffs.length&&performance.now()-idle>25000&&cvs[1]&&cvs[1].isConnected){idle=performance.now();const df=diffs.find(d=>!d.f),c=cvs[1].getContext("2d");c.save();c.globalAlpha=.6;circ(c,df.x,df.y,15,null,"#ffd23f",3);c.restore();K.speak("Look here!");setTimeout(redraw,1200)}},2000);
+function intro(){area.innerHTML=`<div class="start"><div class="art" id="sArt"></div><h2>Spot the Difference</h2><p>Two pictures look the same, but some things changed. Tap what is different!</p><button class="go pulse" id="bGo">Let's look!</button></div>`;
+  ["cat","star","cat"].forEach((n,i)=>$("#sArt").append(K.art(i===2?"bunny":n,70)));dots();say("Can you find what changed?");$("#bGo").onclick=()=>{K.actx();K.sfx.pop();begin()}}
+intro();
+
+K.sw();
+})();
+</script>
+</body>
+</html>

@@ -272,6 +272,7 @@ K.back=function(){const sh=document.querySelector(".sheet");if(sh&&visible(sh)){
 const BACK=[27,4,10009,461,166];
 document.addEventListener("keydown",e=>{
   const k=e.key,kc=e.keyCode,dir={ArrowRight:"right",ArrowLeft:"left",ArrowUp:"up",ArrowDown:"down"}[k]||{39:"right",37:"left",38:"up",40:"down"}[kc];
+  if(dir&&document.activeElement&&document.activeElement.hasAttribute&&document.activeElement.hasAttribute("data-arrows")){K.tv=true;return}
   if(dir){if(!K.tv){K.tv=true;K.tvHint("Arrows to move · OK to play · Back to go back",3500)}e.preventDefault();move(dir);return}
   const ok=k==="Enter"||kc===13||kc===23||k===" ";
   if(ok&&K.carry){e.preventDefault();e.stopPropagation();const a=document.activeElement,C=K.carry;if(a===C.el){K.endCarry();return}

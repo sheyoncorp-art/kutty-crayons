@@ -108,6 +108,22 @@ a.game:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
       <div class="art" data-art="chop"></div>
       <div class="info"><div><b>Chop Chop</b><small>Slice the fruits, dodge the bombs · பழம் வெட்டு</small></div></div>
     </a>
+    <a class="game" href="spot/" style="--bg:#ffe9c7;--btn:#ff6b5a"><span class="new">NEW</span>
+      <div class="art" data-art="spot"></div>
+      <div class="info"><div><b>Spot the Difference</b><small>Find what changed · வேறுபாடு</small></div></div>
+    </a>
+    <a class="game" href="maze/" style="--bg:#e5dcff;--btn:#ff6b5a"><span class="new">NEW</span>
+      <div class="art" data-art="maze"></div>
+      <div class="info"><div><b>Kutty Maze</b><small>Find the way · வழி கண்டுபிடி</small></div></div>
+    </a>
+    <a class="game" href="copy/" style="--bg:#e0f7ec;--btn:#ff6b5a"><span class="new">NEW</span>
+      <div class="art" data-art="copy"></div>
+      <div class="info"><div><b>Copy Me</b><small>Remember the order · நினைவாற்றல்</small></div></div>
+    </a>
+    <a class="game" href="compare/" style="--bg:#ffe3d1;--btn:#ff6b5a"><span class="new">NEW</span>
+      <div class="art" data-art="compare"></div>
+      <div class="info"><div><b>More or Less</b><small>Which has more? · அதிகம் / குறைவு</small></div></div>
+    </a>
   </div>
   <p class="foot">Tip: tap ⋮ → Add to Home screen to keep these games on the phone.</p>
 </main>
@@ -122,6 +138,10 @@ const ART={
  letters(c){T(c,"A",28,42,40,"#3a9df0");T(c,"அ",68,42,40,"#ff7ac6");at(c,"apple",28,76,22);at(c,"pineapple",68,76,22)},
  flight(c){at(c,"plane",50,30,52);at(c,"juice",28,72,26);at(c,"sandwich",52,74,26);at(c,"cupcake",76,72,26)},
  chop(c){c.fillStyle="#3b2a78";c.fillRect(0,0,100,100);at(c,"watermelon",30,46,40);at(c,"banana",70,40,34);c.save();c.strokeStyle="#fff";c.lineWidth=3;c.lineCap="round";c.beginPath();c.moveTo(12,80);c.lineTo(88,20);c.stroke();c.restore();K.circ(c,76,74,9,"#1d1730");c.fillStyle="#ffd23f";K.circ(c,82,63,3,"#ffd23f")},
+ spot(c){for(const x of [26,74]){K.rrect(c,x-22,18,44,64,6);K.fs(c,"#bfe6ff","#fff",2);at(c,"sun",x+8,30,18);at(c,x<50?"cat":"bunny",x,62,26)}K.circ(c,74,62,15,null,"#3ccf6a",3)},
+ maze(c){c.strokeStyle="#5b4bb7";c.lineWidth=3;c.lineCap="round";c.beginPath();[[20,20,80,20],[20,20,20,80],[20,80,80,80],[80,20,80,80],[40,20,40,60],[60,40,60,80],[20,60,30,60]].forEach(l=>{c.moveTo(l[0],l[1]);c.lineTo(l[2],l[3])});c.stroke();at(c,"bunny",30,32,18);at(c,"carrot",70,70,18)},
+ copy(c){[["#ff6b5a","cat"],["#3a9df0","elephant"],["#2ec27e","bird"],["#ffb000","bear"]].forEach((p,i)=>{const x=32+(i%2)*36,y=30+Math.floor(i/2)*40;K.rrect(c,x-16,y-16,32,32,8);K.fs(c,p[0],"#fff",2);at(c,p[1],x,y,24)})},
+ compare(c){K.ell(c,28,56,20,22,"#ffe3d1");K.ell(c,72,56,20,22,"#d9ecff");[[22,48],[34,48],[22,62],[34,62],[28,55]].forEach(p=>at(c,"apple",p[0],p[1],12));[[66,52],[78,60]].forEach(p=>at(c,"apple",p[0],p[1],12))},
  puzzle(c){const s=["sun","tree","car","house"];s.forEach((n,i)=>{const x=30+(i%2)*40,y=30+Math.floor(i/2)*40,o=i===3?4:0;rrect(c,x-19+o,y-19+o,38,38,4);fs(c,"#fff","rgba(43,37,64,.25)",1);at(c,n,x+o,y+o,30)})}};
 document.querySelectorAll("[data-art]").forEach(el=>{const r=el.getBoundingClientRect();const w=r.width||200,h=w*10/16;const cv=K.canvas(c=>{c.save();c.translate(50,50);c.scale(1,1);c.translate(-50,-50);ART[el.dataset.art](c);c.restore()},h);cv.style.width="auto";cv.style.height="100%";el.append(cv)});
 })();
